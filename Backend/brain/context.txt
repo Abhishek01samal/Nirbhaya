@@ -1,0 +1,2744 @@
+# COMPREHENSIVE BACKEND CONTEXT PROMPT
+
+## Women Safety & Journey Protection Platform — Person 1 Backend Development
+
+You are an expert backend engineer working inside an existing team project.
+
+You will help me vibe-code the backend of a **women-safety-focused, gender-inclusive web application**.
+
+The application is a **MERN website**, NOT a mobile/Android application.
+
+I am **Person 1** of a 3-person development team.
+
+Your job is to understand the COMPLETE application architecture and dependencies, but you must implement and modify **ONLY the features owned by Person 1**, unless I explicitly ask you to modify shared infrastructure.
+
+I will develop my features **endpoint by endpoint** in subsequent prompts.
+
+---
+
+# 1. APPLICATION PURPOSE
+
+The application is a web-based personal safety platform.
+
+A user can start a safety journey/session, share location, monitor a ride, optionally enable AI voice danger detection, configure guardians, trigger an SOS, and receive emergency assistance.
+
+The system combines:
+
+* Real-time location tracking
+* Ride monitoring
+* AI voice danger detection
+* Manual SOS
+* Automatic safety-event-based SOS
+* Guardian notification
+* Nearby responder escalation
+* Emergency escalation
+* Emergency calling
+* Safe-place discovery
+* Crime-area visualization
+* Transport search for guardians
+* AI assistant
+* Dashboard
+* Feedback
+
+The application is designed particularly around women's safety scenarios, but the actual website should support users of any gender.
+
+---
+
+# 2. VERY IMPORTANT PLATFORM CONSTRAINT
+
+This is a normal web application.
+
+Do NOT assume Android/iOS native capabilities.
+
+The system cannot reliably guarantee:
+
+* Always-running GPS after the browser is completely closed
+* Always-on microphone after browser suspension/closure
+* Hardware power-button SOS
+* Silent SMS from a browser
+* Background emergency actions when the browser is completely terminated
+* Guaranteed offline emergency delivery
+
+Therefore:
+
+* Location monitoring happens while the browser/session allows geolocation.
+* Voice monitoring happens only after explicit user consent and while the monitoring session is active.
+* Emergency actions must be network-aware.
+* Never claim that browser APIs provide native mobile capabilities they do not actually provide.
+
+---
+
+# 3. TECHNOLOGY STACK
+
+## Frontend
+
+* React
+* React Router
+* Tailwind CSS
+* TanStack Query / React Query
+* Socket.IO Client
+* Browser Geolocation API
+* MediaRecorder / Web Audio APIs
+* Google Maps JavaScript APIs
+* LiveKit or ZEGOCLOUD client SDK
+
+## Backend
+
+* Node.js
+* Express.js
+* MongoDB
+* Mongoose
+* Socket.IO
+* JWT-based authentication
+* Multer
+* Zod
+* Background timers/jobs where required
+* Cloudinary
+* External AI/API services
+
+## External services
+
+Possible integrations include:
+
+* Google Maps API
+* Google Places/Directions APIs
+* LiveKit OR ZEGOCLOUD
+* Cloudinary
+* OCR/text extraction API
+* Speech-to-text/transcriber API
+* Translation API
+* LLM/AI model
+* Tavily
+* Transport search APIs
+
+Do not introduce unnecessary infrastructure such as Redis, Kafka, Docker, etc. unless explicitly requested later.
+
+---
+
+# 4. TEAM STRUCTURE
+
+There are three developers.
+
+## PERSON 1 — EMERGENCY & COMMUNICATION
+
+I am Person 1.
+
+I own:
+
+* SOS
+* SOS verification
+* Accidental SOS handling
+* SOS timeout
+* SOS state machine
+* Guardian management
+* Guardian priority
+* Guardian acknowledgement
+* SOS escalation
+* Nearby responder escalation
+* Emergency escalation
+* SOS history
+* Real-time SOS events
+* Emergency calling
+* LiveKit/ZEGOCLOUD integration
+
+Primary modules:
+
+```text
+modules/
+├── sos/
+├── guardians/
+└── calling/
+```
+
+Primary collections:
+
+```text
+guardians
+sosEvents
+```
+
+---
+
+## PERSON 2 — JOURNEY SAFETY
+
+Person 2 owns:
+
+* Safety sessions
+* GPS/location
+* Location history
+* Ride screenshot upload
+* Cloudinary ride image storage
+* OCR
+* Driver information
+* Vehicle information
+* Number plate
+* Pickup/destination
+* Google Maps route
+* Expected route
+* Off-route detection
+* Long-stop detection
+* Safe places
+* Safe-place routes
+* Crime map/NCRB data
+* Bus/train/flight search
+
+Primary modules:
+
+```text
+modules/
+├── location/
+├── safetySession/
+├── ride/
+├── safePlace/
+├── crime/
+└── transport/
+```
+
+Primary collections:
+
+```text
+safetySessions
+locations
+rides
+appData
+```
+
+Person 2 may emit safety events such as:
+
+```text
+OFF_ROUTE
+LONG_STOP
+```
+
+Person 2 does NOT own the final SOS state machine.
+
+---
+
+## PERSON 3 — AI & PLATFORM
+
+Person 3 owns:
+
+* Authentication
+* User profile
+* Voice monitoring
+* Audio batching
+* Transcription
+* Translation
+* 1-minute LLM analysis
+* Voice danger detection
+* AI assistant
+* Tavily integration
+* Dashboard
+* Feedback
+
+Primary modules:
+
+```text
+modules/
+├── auth/
+├── users/
+├── voice/
+├── assistant/
+├── dashboard/
+└── feedback/
+```
+
+Primary collections:
+
+```text
+users
+voiceSessions
+conversations
+feedback
+```
+
+Person 3 may emit:
+
+```text
+VOICE_DANGER
+```
+
+Person 3 does NOT own final SOS orchestration.
+
+---
+
+# 5. CRITICAL ARCHITECTURE PRINCIPLE
+
+The most important architectural rule is:
+
+> PERSON 2 AND PERSON 3 DETECT SAFETY EVENTS. PERSON 1 OWNS THE SOS ENGINE.
+
+For example:
+
+Person 2 detects:
+
+```text
+OFF_ROUTE
+```
+
+or:
+
+```text
+LONG_STOP
+```
+
+Person 3 detects:
+
+```text
+VOICE_DANGER
+```
+
+These should become standardized safety events.
+
+Person 1 consumes those events and determines whether to initiate the SOS process.
+
+Therefore, do NOT implement separate SOS systems inside:
+
+```text
+location/
+ride/
+voice/
+assistant/
+```
+
+The SOS orchestration must remain centralized inside:
+
+```text
+modules/sos/
+```
+
+---
+
+# 6. SAFETY EVENT CONTRACT
+
+Use a standardized event concept.
+
+Example:
+
+```json
+{
+  "type": "OFF_ROUTE",
+  "userId": "USER_ID",
+  "safetySessionId": "SESSION_ID",
+  "location": {
+    "lat": 19.31,
+    "lng": 84.79
+  },
+  "metadata": {
+    "distanceFromRoute": 850
+  }
+}
+```
+
+Another example:
+
+```json
+{
+  "type": "LONG_STOP",
+  "userId": "USER_ID",
+  "safetySessionId": "SESSION_ID",
+  "location": {
+    "lat": 19.31,
+    "lng": 84.79
+  },
+  "metadata": {
+    "durationSeconds": 420,
+    "distanceFromDestination": 3200
+  }
+}
+```
+
+Voice:
+
+```json
+{
+  "type": "VOICE_DANGER",
+  "userId": "USER_ID",
+  "safetySessionId": "SESSION_ID",
+  "location": {
+    "lat": 19.31,
+    "lng": 84.79
+  },
+  "metadata": {
+    "riskLevel": "HIGH",
+    "confidence": 0.92,
+    "signals": [
+      "distress",
+      "threat"
+    ]
+  }
+}
+```
+
+The exact internal event implementation can be adjusted, but the concept must remain stable.
+
+---
+
+# 7. SOS STATE MACHINE
+
+This is the core feature owned by Person 1.
+
+The general lifecycle is:
+
+```text
+TRIGGER
+   ↓
+VERIFYING
+   ↓
+ ┌──────────────────────────────┐
+ │                              │
+ │ User says "mistake"          │
+ ↓                              ↓
+CANCELLED                    User confirms
+notify nobody                    │
+                                ↓
+                              ACTIVE
+                                ↓
+                            GUARDIAN
+                                ↓
+                       NEARBY RESPONDER
+                                ↓
+                      EMERGENCY ESCALATION
+```
+
+There is also a timeout path:
+
+```text
+VERIFYING
+    ↓
+No response before timeout
+    ↓
+ACTIVE
+```
+
+The important rule is:
+
+> Silence/no response during verification defaults to SOS activation.
+
+This prevents a user from being left unprotected simply because they could not respond.
+
+---
+
+# 8. SOS TRIGGER SOURCES
+
+SOS can originate from:
+
+### Manual
+
+```text
+MANUAL
+```
+
+User explicitly presses SOS.
+
+### Voice danger
+
+```text
+VOICE_DANGER
+```
+
+Generated by Person 3 after AI analysis.
+
+### Route deviation
+
+```text
+OFF_ROUTE
+```
+
+Generated by Person 2.
+
+### Prolonged stop
+
+```text
+LONG_STOP
+```
+
+Generated by Person 2.
+
+Future trigger types may be added, but the SOS engine should be designed so new trigger types can be added without rewriting the entire state machine.
+
+---
+
+# 9. SOS VERIFICATION BEHAVIOR
+
+When an SOS trigger occurs, depending on the trigger type and configured application behavior:
+
+```text
+Create SOS
+     ↓
+VERIFYING
+     ↓
+Notify user
+     ↓
+Show confirmation UI
+```
+
+The user sees something conceptually similar to:
+
+```text
+"Are you safe?"
+
+"This alert was triggered because unusual activity was detected."
+
+[ I'm Safe / Cancel SOS ]
+```
+
+If the user explicitly cancels:
+
+```text
+SOS → CANCELLED
+```
+
+No guardian or responder should be notified.
+
+If the user confirms:
+
+```text
+SOS → ACTIVE
+```
+
+If the timer expires:
+
+```text
+SOS → ACTIVE
+```
+
+Do not let an LLM decide this state transition.
+
+The transition must be deterministic backend logic.
+
+---
+
+# 10. SOS ESCALATION
+
+After:
+
+```text
+SOS = ACTIVE
+```
+
+the system starts the escalation process.
+
+The intended hierarchy is:
+
+```text
+LEVEL 1
+Guardian
+      ↓
+if no acknowledgement
+      ↓
+LEVEL 2
+Nearby responder
+      ↓
+if no acknowledgement
+      ↓
+LEVEL 3
+Emergency service
+```
+
+The exact notification mechanism may evolve.
+
+The backend must track:
+
+* Which level is active
+* Who was notified
+* When they were notified
+* Whether they acknowledged
+* When they acknowledged
+* Whether escalation occurred
+* Current SOS status
+
+Do not hard-code a fragile implementation that makes future escalation levels impossible to add.
+
+---
+
+# 11. GUARDIAN SYSTEM
+
+Users can configure emergency guardians.
+
+A guardian relationship contains:
+
+* User
+* Guardian user
+* Relationship
+* Priority
+* Status
+
+Example:
+
+```json
+{
+  "_id": "...",
+  "userId": "USER_A",
+  "guardianUserId": "USER_B",
+  "relationship": "Father",
+  "priority": 1,
+  "status": "ACTIVE"
+}
+```
+
+Possible statuses:
+
+```text
+PENDING
+ACTIVE
+REJECTED
+BLOCKED
+```
+
+Guardians should be ordered by:
+
+```text
+priority ASC
+```
+
+when determining notification order.
+
+---
+
+# 12. SOS ACKNOWLEDGEMENT
+
+When a guardian receives an SOS notification, they can acknowledge it.
+
+Example:
+
+```text
+Guardian receives:
+"Emergency alert from User A"
+
+[ACKNOWLEDGE]
+```
+
+When acknowledged:
+
+```text
+guardian escalation status
+        ↓
+ACKNOWLEDGED
+```
+
+The user should receive a real-time update through Socket.IO.
+
+Example:
+
+```text
+sos:guardian-acknowledged
+```
+
+The backend must validate that the person acknowledging is actually an authorized recipient for that SOS.
+
+Never allow an arbitrary authenticated user to acknowledge someone else's SOS.
+
+---
+
+# 13. SOS RESOLUTION
+
+An active SOS can eventually be resolved.
+
+Possible resolution sources:
+
+* User
+* Guardian
+* Authorized responder
+* Emergency flow
+
+When resolved:
+
+```text
+SOS → RESOLVED
+```
+
+Then:
+
+* Stop further escalation
+* Stop pending notifications
+* Notify relevant participants
+* Record `resolvedAt`
+
+Do not delete the SOS.
+
+SOS history is important for auditing and safety records.
+
+---
+
+# 14. SOS DATABASE SCHEMA
+
+The current planned schema is:
+
+```js
+{
+  _id,
+
+  userId,
+
+  safetySessionId,
+
+  triggerType:
+    "MANUAL" |
+    "VOICE_DANGER" |
+    "OFF_ROUTE" |
+    "LONG_STOP",
+
+  status:
+    "VERIFYING" |
+    "ACTIVE" |
+    "CANCELLED" |
+    "ACKNOWLEDGED" |
+    "RESOLVED" |
+    "ESCALATING",
+
+  triggerData: {
+    riskLevel,
+    confidence,
+    reason
+  },
+
+  location: {
+    lat,
+    lng,
+    address
+  },
+
+  verification: {
+    expiresAt,
+    userResponse,
+    respondedAt
+  },
+
+  escalation: {
+    currentLevel: 0,
+
+    levels: [
+      {
+        type: "GUARDIAN",
+        status: "PENDING",
+        targetId,
+        notifiedAt,
+        respondedAt
+      },
+      {
+        type: "NEARBY_RESPONDER",
+        status: "PENDING",
+        targetId,
+        notifiedAt,
+        respondedAt
+      },
+      {
+        type: "EMERGENCY_SERVICE",
+        status: "PENDING"
+      }
+    ]
+  },
+
+  createdAt,
+  updatedAt,
+  resolvedAt
+}
+```
+
+Use Mongoose timestamps where appropriate.
+
+Use references/ObjectIds consistently.
+
+Do not unnecessarily redesign this schema unless I explicitly request a schema change.
+
+If a schema change becomes technically necessary, explain why before making it.
+
+---
+
+# 15. COMPLETE APPLICATION DATABASE CONTEXT
+
+You must understand these collections because Person 1 depends on some of them.
+
+## users
+
+```js
+{
+  _id,
+  name,
+  email,
+  phone,
+  passwordHash,
+
+  role: "USER" | "ADMIN",
+
+  emergencySettings: {
+    sosTimeoutSeconds: 10,
+    locationSharingEnabled: true,
+    voiceMonitoringEnabled: false
+  },
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 1 may READ relevant user/emergency settings.
+
+Person 1 does NOT own authentication.
+
+---
+
+## guardians
+
+```js
+{
+  _id,
+  userId,
+  guardianUserId,
+  relationship,
+  priority,
+
+  status:
+    "PENDING" |
+    "ACTIVE" |
+    "REJECTED" |
+    "BLOCKED",
+
+  createdAt,
+  updatedAt
+}
+```
+
+Owned by Person 1.
+
+---
+
+## safetySessions
+
+Owned by Person 2.
+
+```js
+{
+  _id,
+  userId,
+
+  status:
+    "ACTIVE" |
+    "COMPLETED" |
+    "CANCELLED",
+
+  startLocation: {
+    lat,
+    lng,
+    address
+  },
+
+  destination: {
+    lat,
+    lng,
+    address
+  },
+
+  expectedArrival,
+
+  settings: {
+    locationTracking: true,
+    voiceMonitoring: true,
+    rideMonitoring: false
+  },
+
+  lastLocation: {
+    lat,
+    lng,
+    accuracy,
+    speed,
+    timestamp
+  },
+
+  startedAt,
+  endedAt,
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 1 may read an active SafetySession to associate an SOS with a journey.
+
+Do not implement SafetySession CRUD.
+
+---
+
+## locations
+
+Owned by Person 2.
+
+```js
+{
+  _id,
+
+  userId,
+  safetySessionId,
+
+  location: {
+    type: "Point",
+    coordinates: [lng, lat]
+  },
+
+  accuracy,
+  speed,
+  timestamp
+}
+```
+
+Person 1 may consume the latest location when creating an SOS.
+
+Do not implement location tracking here.
+
+---
+
+## rides
+
+Owned by Person 2.
+
+```js
+{
+  _id,
+  userId,
+  safetySessionId,
+
+  platform:
+    "UBER" |
+    "OLA",
+
+  screenshot: {
+    url,
+    publicId
+  },
+
+  driver: {
+    name,
+    phone
+  },
+
+  vehicle: {
+    model,
+    numberPlate
+  },
+
+  pickup: {
+    address,
+    lat,
+    lng
+  },
+
+  destination: {
+    address,
+    lat,
+    lng
+  },
+
+  expectedRoute: {
+    coordinates: []
+  },
+
+  status:
+    "CREATED" |
+    "ACTIVE" |
+    "COMPLETED" |
+    "CANCELLED",
+
+  monitoring: {
+    lastMovementAt,
+    offRoute: false,
+    prolongedStop: false
+  },
+
+  startedAt,
+  completedAt,
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 1 should not implement ride monitoring.
+
+---
+
+## voiceSessions
+
+Owned by Person 3.
+
+```js
+{
+  _id,
+  userId,
+  safetySessionId,
+
+  status:
+    "ACTIVE" |
+    "COMPLETED",
+
+  language,
+
+  audioStorage: {
+    enabled: true,
+    folder
+  },
+
+  batchDurationSeconds: 60,
+
+  batches: [
+    {
+      batchNumber,
+      startTime,
+      endTime,
+
+      audioUrl,
+
+      transcript,
+      translatedTranscript,
+
+      analysis: {
+        riskDetected,
+        riskLevel,
+        confidence,
+        signals: []
+      }
+    }
+  ],
+
+  startedAt,
+  endedAt,
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 3 can generate:
+
+```text
+VOICE_DANGER
+```
+
+Person 1 handles the SOS after receiving that event.
+
+---
+
+## appData
+
+Owned primarily by Person 2.
+
+Used for:
+
+* Crime incidents
+* Safe places
+
+```js
+{
+  _id,
+
+  type:
+    "CRIME_INCIDENT" |
+    "SAFE_PLACE",
+
+  location: {
+    type: "Point",
+    coordinates: [lng, lat]
+  },
+
+  name,
+  category,
+
+  metadata: {
+    source,
+    sourceYear,
+    address,
+    description
+  },
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 1 normally does not modify this collection.
+
+---
+
+## conversations
+
+Owned by Person 3.
+
+```js
+{
+  _id,
+  userId,
+
+  messages: [
+    {
+      role: "user",
+      content,
+      timestamp
+    },
+    {
+      role: "assistant",
+      content,
+      sources: [],
+      timestamp
+    }
+  ],
+
+  createdAt,
+  updatedAt
+}
+```
+
+Person 1 does not own this.
+
+---
+
+## feedback
+
+Owned by Person 3.
+
+```js
+{
+  _id,
+  userId,
+  feature,
+  rating,
+  message,
+  createdAt
+}
+```
+
+Person 1 does not own this.
+
+---
+
+# 16. PERSON 1 API OWNERSHIP
+
+You will implement these APIs:
+
+## SOS
+
+```http
+POST   /api/v1/sos
+GET    /api/v1/sos/active
+GET    /api/v1/sos/:id
+
+POST   /api/v1/sos/:id/confirm
+POST   /api/v1/sos/:id/cancel
+POST   /api/v1/sos/:id/acknowledge
+POST   /api/v1/sos/:id/resolve
+
+GET    /api/v1/sos/history
+```
+
+## Guardians
+
+```http
+POST   /api/v1/guardians
+GET    /api/v1/guardians
+PATCH  /api/v1/guardians/:id
+DELETE /api/v1/guardians/:id
+```
+
+## Calling
+
+```http
+POST /api/v1/calls/token
+POST /api/v1/calls/start
+POST /api/v1/calls/end
+```
+
+---
+
+# 17. ENDPOINT OWNERSHIP RULE
+
+Do NOT implement these APIs unless explicitly requested:
+
+```text
+/auth/*
+/users/*
+/safety-sessions/*
+/location/*
+/rides/*
+/safe-places/*
+/crime/*
+/transport/*
+/voice/*
+/assistant/*
+/dashboard/*
+/feedback/*
+```
+
+Those belong to other developers.
+
+---
+
+# 18. SOS ENDPOINT DETAILS
+
+## POST /api/v1/sos
+
+Purpose:
+
+Create an SOS event.
+
+Possible sources:
+
+```text
+MANUAL
+VOICE_DANGER
+OFF_ROUTE
+LONG_STOP
+```
+
+Flow:
+
+```text
+Client
+ ↓
+Authentication
+ ↓
+Validate request
+ ↓
+Verify active safety session if required
+ ↓
+Capture current location
+ ↓
+Create SOS
+ ↓
+Set status = VERIFYING
+ ↓
+Set verification expiry
+ ↓
+Emit Socket.IO event
+ ↓
+Return SOS
+```
+
+For a manual SOS, the frontend can explicitly request creation.
+
+For automatic safety events, the same core SOS service should be reusable.
+
+Do NOT duplicate SOS creation logic for every trigger source.
+
+Use a shared internal service such as:
+
+```text
+sosService.createSOS(...)
+```
+
+or an equivalent clean architecture.
+
+---
+
+# 19. POST /api/v1/sos/:id/confirm
+
+Purpose:
+
+User confirms that the SOS is genuine.
+
+Flow:
+
+```text
+Authenticate
+ ↓
+Find SOS
+ ↓
+Verify ownership
+ ↓
+Verify status = VERIFYING
+ ↓
+Set status = ACTIVE
+ ↓
+Record response
+ ↓
+Start escalation
+ ↓
+Notify guardian
+ ↓
+Emit Socket.IO events
+```
+
+Do not allow confirmation of:
+
+```text
+CANCELLED
+RESOLVED
+```
+
+SOS events.
+
+---
+
+# 20. POST /api/v1/sos/:id/cancel
+
+Purpose:
+
+User explicitly says the trigger was accidental.
+
+Flow:
+
+```text
+Authenticate
+ ↓
+Find SOS
+ ↓
+Verify owner
+ ↓
+Verify VERIFYING
+ ↓
+status = CANCELLED
+ ↓
+record user response
+ ↓
+stop pending escalation
+ ↓
+notify relevant UI
+```
+
+Critical rule:
+
+> If the user explicitly says the trigger was a mistake, nobody should be notified.
+
+Do not accidentally notify guardians before cancellation if the SOS is still in verification.
+
+---
+
+# 21. VERIFICATION TIMEOUT
+
+Every verifying SOS has:
+
+```text
+verification.expiresAt
+```
+
+Example:
+
+```text
+now = 12:00:00
+timeout = 10 seconds
+
+expiresAt = 12:00:10
+```
+
+If no response arrives:
+
+```text
+VERIFYING
+ ↓
+timeout
+ ↓
+ACTIVE
+ ↓
+escalation starts
+```
+
+The timeout must be server-controlled.
+
+Do not rely exclusively on frontend JavaScript timers.
+
+The frontend timer is only visual.
+
+The backend is authoritative.
+
+---
+
+# 22. IMPORTANT CONCURRENCY REQUIREMENT
+
+SOS verification can experience race conditions.
+
+Example:
+
+At exactly the same time:
+
+```text
+Request A = CANCEL
+Request B = TIMEOUT
+```
+
+The system must not produce:
+
+```text
+CANCELLED
+ACTIVE
+```
+
+simultaneously.
+
+Only one valid state transition should win.
+
+Use appropriate MongoDB atomic operations, transactions, or conditional updates.
+
+For example, transitions should conceptually be:
+
+```text
+VERIFYING → ACTIVE
+```
+
+or:
+
+```text
+VERIFYING → CANCELLED
+```
+
+but never:
+
+```text
+CANCELLED → ACTIVE
+```
+
+or:
+
+```text
+ACTIVE → CANCELLED
+```
+
+unless an explicitly supported transition exists.
+
+Design the state machine carefully.
+
+---
+
+# 23. ESCALATION ENGINE
+
+After:
+
+```text
+SOS = ACTIVE
+```
+
+call something conceptually like:
+
+```text
+sosEscalationService.start(sosId)
+```
+
+It should:
+
+1. Load SOS
+2. Load active guardians
+3. Sort guardians by priority
+4. Notify appropriate guardian(s)
+5. Record notification time
+6. Wait for acknowledgement
+7. If no acknowledgement within configured escalation window:
+
+   * escalate
+8. Notify nearby responders
+9. If still unresolved:
+
+   * emergency escalation
+10. Stop immediately if SOS becomes resolved/cancelled where applicable
+
+Do not scatter escalation logic across controllers.
+
+Prefer:
+
+```text
+controller
+    ↓
+service
+    ↓
+state machine / escalation service
+    ↓
+notification layer
+```
+
+---
+
+# 24. GUARDIAN APIs
+
+## POST /api/v1/guardians
+
+Creates a guardian relationship.
+
+Validate:
+
+* Authenticated user
+* Guardian exists if guardian accounts are required
+* User cannot add themselves
+* No duplicate active relationship
+* Valid priority
+* Valid relationship
+* Valid status rules
+
+Default status:
+
+```text
+PENDING
+```
+
+---
+
+## GET /api/v1/guardians
+
+Return the authenticated user's guardians.
+
+Do not return arbitrary users' guardian relationships.
+
+---
+
+## PATCH /api/v1/guardians/:id
+
+Allow permitted updates such as:
+
+* Relationship
+* Priority
+* Status
+
+Verify ownership/authorization.
+
+Do not allow arbitrary user IDs to be changed in a way that could hijack a guardian relationship.
+
+---
+
+## DELETE /api/v1/guardians/:id
+
+Remove/deactivate a guardian relationship.
+
+Prefer safe deletion/deactivation semantics where appropriate rather than destroying audit-critical data without reason.
+
+---
+
+# 25. CALLING SYSTEM
+
+The application uses:
+
+```text
+LiveKit OR ZEGOCLOUD
+```
+
+Do NOT implement raw audio streaming through Express.
+
+The architecture is:
+
+```text
+User browser
+      ↓
+Backend
+      ↓
+Generate/authorize token
+      ↓
+LiveKit/ZEGOCLOUD
+      ↓
+Guardian browser
+```
+
+Actual media:
+
+```text
+Browser
+   ↕
+LiveKit/ZEGOCLOUD
+   ↕
+Browser
+```
+
+Express should handle:
+
+* Authentication
+* Authorization
+* Room/session creation
+* Token generation
+* Call metadata
+* Call start/end state
+
+---
+
+# 26. POST /api/v1/calls/token
+
+Purpose:
+
+Generate a provider authorization token.
+
+Before generating:
+
+* Authenticate user
+* Verify user is allowed to participate
+* Verify SOS/call relationship if applicable
+* Generate appropriate room/token
+* Return token + room information
+
+Do not expose provider secret keys to the frontend.
+
+Provider credentials must remain server-side.
+
+---
+
+# 27. POST /api/v1/calls/start
+
+Record/start a call session if the application needs call metadata.
+
+The call should be associated with:
+
+```text
+SOS
+```
+
+where applicable.
+
+Possible information:
+
+```text
+sosId
+callerId
+receiverId
+roomId
+provider
+startedAt
+```
+
+Do not store audio unless explicitly required.
+
+---
+
+# 28. POST /api/v1/calls/end
+
+End the call metadata/state.
+
+Record:
+
+```text
+endedAt
+duration
+status
+```
+
+Do not terminate the actual media by pretending Express carries the media stream.
+
+The frontend/provider SDK handles the media connection.
+
+---
+
+# 29. SOCKET.IO ARCHITECTURE
+
+Use Socket.IO for real-time events.
+
+Important events:
+
+```text
+sos:verification-required
+sos:confirmed
+sos:cancelled
+sos:timeout
+sos:activated
+sos:guardian-notified
+sos:guardian-acknowledged
+sos:escalating
+sos:resolved
+
+call:incoming
+call:accepted
+call:rejected
+call:ended
+```
+
+Potential event flow:
+
+```text
+Backend
+   ↓
+Socket.IO
+   ↓
+specific user room
+   ↓
+React client
+```
+
+Use authenticated Socket.IO connections.
+
+Do not trust a client-provided user ID for room authorization.
+
+---
+
+# 30. SOCKET ROOM SECURITY
+
+Do not do:
+
+```js
+socket.join(`user:${socket.handshake.query.userId}`)
+```
+
+without validating identity.
+
+Prefer:
+
+```text
+JWT
+ ↓
+authenticate socket
+ ↓
+derive userId from verified token
+ ↓
+join user-specific room
+```
+
+The server must determine identity.
+
+---
+
+# 31. AUTHENTICATION ASSUMPTION
+
+Person 3 owns authentication.
+
+Assume middleware will eventually provide something similar to:
+
+```js
+req.user = {
+  id: "...",
+  role: "USER"
+}
+```
+
+Do not build a second authentication system.
+
+If the authentication middleware does not yet exist during my development, create a minimal temporary interface or clearly mark the dependency rather than duplicating auth logic.
+
+The final Person 1 module must use the shared authentication middleware.
+
+---
+
+# 32. AUTHORIZATION RULES
+
+Every Person 1 endpoint must answer:
+
+```text
+Who is allowed to perform this action?
+```
+
+Examples:
+
+### User
+
+Can:
+
+* Create their own SOS
+* View their SOS
+* Confirm their SOS
+* Cancel their SOS
+* View their history
+* Manage their guardians
+* Participate in authorized calls
+
+### Guardian
+
+Can:
+
+* Receive assigned SOS
+* Acknowledge authorized SOS
+* Participate in authorized emergency call
+* Resolve an SOS only if the product's final policy explicitly permits this
+
+Never allow:
+
+```text
+User A → modify User B's SOS
+```
+
+---
+
+# 33. SECURITY REQUIREMENTS
+
+Treat this as a safety-critical application.
+
+Never trust:
+
+* userId from request body
+* guardianId without validation
+* sosId without authorization
+* location ownership
+* client-side SOS status
+* client-side escalation status
+* client-side timeout
+* arbitrary Socket.IO room names
+* client-provided role
+
+Always derive identity from authenticated context.
+
+Validate all request bodies using Zod or the project's validation layer.
+
+Use centralized error handling.
+
+Do not expose:
+
+* password hashes
+* JWT secrets
+* LiveKit secrets
+* ZEGOCLOUD secrets
+* provider private keys
+* internal stack traces
+
+---
+
+# 34. ERROR HANDLING
+
+Use consistent API responses.
+
+For example:
+
+Success:
+
+```json
+{
+  "success": true,
+  "data": {}
+}
+```
+
+Error:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "SOS_NOT_FOUND",
+    "message": "SOS event not found"
+  }
+}
+```
+
+Exact format can follow the existing project convention if one already exists.
+
+Do not create multiple incompatible response formats.
+
+Use appropriate HTTP status codes.
+
+Examples:
+
+```text
+400 → invalid input
+401 → unauthenticated
+403 → unauthorized
+404 → resource not found
+409 → invalid state/conflict
+422 → validation failure if project convention uses it
+500 → unexpected server error
+```
+
+---
+
+# 35. STATE TRANSITION RULES
+
+Treat SOS as a finite-state machine.
+
+Initial:
+
+```text
+VERIFYING
+```
+
+Valid transitions:
+
+```text
+VERIFYING → ACTIVE
+VERIFYING → CANCELLED
+
+ACTIVE → ESCALATING
+ACTIVE → ACKNOWLEDGED
+ACTIVE → RESOLVED
+
+ESCALATING → ACKNOWLEDGED
+ESCALATING → RESOLVED
+
+ACKNOWLEDGED → RESOLVED
+```
+
+You may adjust exact transitions if implementation requires it, but:
+
+> Never allow arbitrary status updates directly from the client.
+
+For example, never accept:
+
+```json
+{
+  "status": "RESOLVED"
+}
+```
+
+from an ordinary user and blindly save it.
+
+The backend must determine whether the transition is valid.
+
+---
+
+# 36. CURRENT COMPLETE BACKEND STRUCTURE
+
+A clean backend can look conceptually like:
+
+```text
+server/
+│
+├── src/
+│   │
+│   ├── config/
+│   │   ├── db.js
+│   │   ├── env.js
+│   │   └── ...
+│   │
+│   ├── middleware/
+│   │   ├── auth.js
+│   │   ├── errorHandler.js
+│   │   ├── validate.js
+│   │   └── ...
+│   │
+│   ├── modules/
+│   │
+│   │   ├── auth/              ← Person 3
+│   │   ├── users/             ← Person 3
+│   │
+│   │   ├── sos/               ← PERSON 1
+│   │   ├── guardians/         ← PERSON 1
+│   │   ├── calling/           ← PERSON 1
+│   │
+│   │   ├── safetySession/     ← Person 2
+│   │   ├── location/          ← Person 2
+│   │   ├── ride/              ← Person 2
+│   │   ├── safePlace/         ← Person 2
+│   │   ├── crime/             ← Person 2
+│   │   ├── transport/         ← Person 2
+│   │
+│   │   ├── voice/             ← Person 3
+│   │   ├── assistant/         ← Person 3
+│   │   ├── dashboard/         ← Person 3
+│   │   └── feedback/          ← Person 3
+│   │
+│   ├── sockets/
+│   │   ├── index.js
+│   │   ├── authSocket.js
+│   │   └── ...
+│   │
+│   ├── utils/
+│   ├── app.js
+│   └── server.js
+│
+└── package.json
+```
+
+---
+
+# 37. PERSON 1 MODULE STRUCTURE
+
+Prefer a modular structure such as:
+
+```text
+modules/
+│
+├── sos/
+│   ├── sos.model.js
+│   ├── sos.routes.js
+│   ├── sos.controller.js
+│   ├── sos.service.js
+│   ├── sos.validation.js
+│   ├── sos.constants.js
+│   ├── sos.stateMachine.js
+│   ├── sos.escalation.js
+│   └── ...
+│
+├── guardians/
+│   ├── guardian.model.js
+│   ├── guardian.routes.js
+│   ├── guardian.controller.js
+│   ├── guardian.service.js
+│   ├── guardian.validation.js
+│   └── ...
+│
+└── calling/
+    ├── call.model.js
+    ├── call.routes.js
+    ├── call.controller.js
+    ├── call.service.js
+    ├── call.validation.js
+    └── ...
+```
+
+Do not blindly create every file if the existing backend architecture uses another convention.
+
+First inspect the existing repository.
+
+Follow existing project conventions where possible.
+
+---
+
+# 38. CODING STYLE
+
+Prioritize:
+
+* Simple code
+* Readability
+* Separation of concerns
+* Reusable services
+* Small controllers
+* Centralized validation
+* Centralized error handling
+* Strong authorization
+* Explicit state transitions
+* Minimal dependencies
+* No unnecessary abstraction
+
+Avoid:
+
+* Giant controllers
+* Duplicate business logic
+* Hidden side effects
+* Overengineering
+* Unnecessary design patterns
+* Huge utility files
+* Hardcoded secrets
+* Hardcoded user IDs
+* Client-controlled security decisions
+
+---
+
+# 39. IMPORTANT SHARED DEPENDENCIES
+
+Person 1 depends on:
+
+### Person 3
+
+```text
+Authentication middleware
+User model
+User emergency settings
+```
+
+### Person 2
+
+```text
+SafetySession
+Latest location
+Potential safety events
+```
+
+### Person 3
+
+```text
+VOICE_DANGER events
+```
+
+Therefore, write the Person 1 code so that these dependencies are clean interfaces.
+
+Do not duplicate their business logic.
+
+---
+
+# 40. SAFETY EVENT → SOS INTEGRATION
+
+The integration should conceptually work like:
+
+```text
+Person 2
+OFF_ROUTE
+    │
+    ▼
+Safety Event
+    │
+    ▼
+Person 1 SOS Engine
+    │
+    ▼
+Create SOS
+    │
+    ▼
+VERIFYING
+    │
+    ├── Cancel → CANCELLED
+    │
+    ├── Confirm → ACTIVE
+    │
+    └── Timeout → ACTIVE
+                     │
+                     ▼
+                 Escalation
+```
+
+Similarly:
+
+```text
+Person 3
+VOICE_DANGER
+    │
+    ▼
+Safety Event
+    │
+    ▼
+Person 1 SOS Engine
+```
+
+This is the key integration boundary between the three developers.
+
+---
+
+# 41. DO NOT MAKE AI RESPONSIBLE FOR EMERGENCY DECISIONS
+
+AI can detect:
+
+```text
+VOICE_DANGER
+```
+
+But AI should not directly decide:
+
+```text
+send police
+```
+
+or:
+
+```text
+notify guardian
+```
+
+The deterministic backend handles:
+
+```text
+Safety Event
+       ↓
+SOS policy
+       ↓
+Verification
+       ↓
+Timeout
+       ↓
+Escalation
+```
+
+This makes the emergency system predictable and testable.
+
+---
+
+# 42. LOCATION DEPENDENCY
+
+When an SOS is created, the backend should associate the best available location.
+
+Possible sources:
+
+1. Current location included by the client
+2. Latest stored SafetySession location
+3. Latest stored location record
+
+Do not blindly trust a client-provided location if the application can retrieve a more authoritative recent location.
+
+However, do not block emergency creation solely because a fresh location is unavailable.
+
+If location is unavailable:
+
+```text
+SOS can still exist
+```
+
+with location potentially null/unavailable.
+
+Emergency safety should not depend entirely on GPS availability.
+
+---
+
+# 43. GUARDIAN NOTIFICATION ABSTRACTION
+
+Do not hard-code notification delivery directly inside the SOS controller.
+
+Prefer an abstraction such as:
+
+```text
+notificationService.notifyGuardian(...)
+```
+
+The implementation can later use:
+
+* Socket.IO
+* Email
+* Push notification
+* SMS
+* Other supported mechanisms
+
+without rewriting the SOS state machine.
+
+For the current web MVP, Socket.IO can be the primary real-time mechanism.
+
+---
+
+# 44. CALLING DEPENDENCY
+
+Calling should be abstracted:
+
+```text
+callingService.createToken(...)
+callingService.startCall(...)
+callingService.endCall(...)
+```
+
+The actual provider can be:
+
+```text
+LIVEKIT
+```
+
+or:
+
+```text
+ZEGOCLOUD
+```
+
+Do not hard-code the entire application around one provider if a provider abstraction is simple to maintain.
+
+---
+
+# 45. ENVIRONMENT VARIABLES
+
+Never hard-code secrets.
+
+Potential environment variables:
+
+```env
+MONGODB_URI=
+JWT_SECRET=
+
+LIVEKIT_API_KEY=
+LIVEKIT_API_SECRET=
+LIVEKIT_URL=
+
+# OR
+
+ZEGO_APP_ID=
+ZEGO_SERVER_SECRET=
+
+SOCKET_CORS_ORIGIN=
+```
+
+Only include variables actually required by the selected provider.
+
+---
+
+# 46. DATABASE INDEXES
+
+Important indexes may include:
+
+### SOS
+
+```text
+userId
+safetySessionId
+status
+createdAt
+```
+
+Potential compound indexes should be chosen based on actual queries.
+
+### Guardians
+
+```text
+userId
+guardianUserId
+status
+```
+
+Avoid excessive indexes.
+
+---
+
+# 47. IDEMPOTENCY AND DUPLICATE SOS
+
+This is an important safety requirement.
+
+The same safety event may accidentally be delivered twice.
+
+For example:
+
+```text
+OFF_ROUTE event
+OFF_ROUTE event
+```
+
+within milliseconds.
+
+The backend should avoid creating multiple identical SOS events unnecessarily.
+
+Consider using an event identifier:
+
+```json
+{
+  "eventId": "...",
+  "type": "OFF_ROUTE"
+}
+```
+
+or an equivalent deduplication strategy.
+
+For automatic triggers, design the service so repeated identical events do not create an SOS storm.
+
+Example:
+
+```text
+OFF_ROUTE
+OFF_ROUTE
+OFF_ROUTE
+OFF_ROUTE
+```
+
+should not create four active SOS events for the same incident.
+
+---
+
+# 48. IMPORTANT: DO NOT OVER-TRIGGER
+
+A single user may generate multiple safety events while an SOS is already active.
+
+Example:
+
+```text
+OFF_ROUTE
+LONG_STOP
+VOICE_DANGER
+```
+
+If there is already an active SOS for the same safety session, do not blindly create three separate SOS events.
+
+Instead:
+
+```text
+existing active SOS
+       ↓
+record/add new trigger information if appropriate
+```
+
+or ignore duplicate triggers according to the defined policy.
+
+Keep one primary active emergency state per relevant safety session unless the product explicitly requires otherwise.
+
+---
+
+# 49. AUDITABILITY
+
+Emergency systems should preserve history.
+
+Do not silently overwrite important information.
+
+Keep:
+
+* Trigger type
+* Trigger data
+* Creation time
+* Verification response
+* Verification time
+* Escalation timestamps
+* Acknowledgement timestamps
+* Resolution time
+
+This makes the system easier to debug and audit.
+
+---
+
+# 50. TESTING REQUIREMENTS
+
+Every Person 1 feature should eventually have tests.
+
+At minimum test:
+
+## SOS creation
+
+* authenticated user
+* unauthenticated user
+* invalid trigger
+* missing session
+* valid manual SOS
+
+## Verification
+
+* confirm valid SOS
+* cancel valid SOS
+* confirm already cancelled SOS
+* cancel already active SOS
+* timeout behavior
+
+## Concurrency
+
+* cancel vs timeout
+* confirm vs cancel
+* duplicate safety event
+
+## Authorization
+
+* User A accessing User B's SOS
+* unauthorized guardian acknowledgement
+* unauthorized resolution
+
+## Guardians
+
+* duplicate guardian
+* self as guardian
+* priority ordering
+* unauthorized update/delete
+
+## Escalation
+
+* guardian acknowledges
+* guardian does not acknowledge
+* escalation proceeds
+* SOS resolves during escalation
+* duplicate notifications
+
+## Calls
+
+* authorized user gets token
+* unauthorized user denied
+* invalid SOS denied
+* provider failure handled
+
+---
+
+# 51. API DEVELOPMENT PROCESS
+
+I will NOT ask you to build the entire Person 1 backend at once.
+
+I will give you endpoints one by one.
+
+For each endpoint I request, follow this workflow:
+
+### STEP 1 — Inspect existing code
+
+Before changing anything, identify:
+
+* Current project structure
+* Existing models
+* Existing middleware
+* Existing auth implementation
+* Existing response format
+* Existing error handling
+* Existing Socket.IO setup
+* Existing environment configuration
+* Existing package dependencies
+
+Do not create duplicate infrastructure.
+
+### STEP 2 — Identify dependencies
+
+Tell me:
+
+```text
+Required existing dependency
+New file(s)
+Existing file(s) modified
+Database collection involved
+Other person's module dependency
+```
+
+### STEP 3 — Implement only the requested endpoint
+
+Do not silently implement unrelated endpoints.
+
+### STEP 4 — Keep interfaces compatible
+
+Ensure the endpoint can integrate with Person 2 and Person 3 later.
+
+### STEP 5 — Validate
+
+Add:
+
+* request validation
+* authentication
+* authorization
+* state validation
+* error handling
+
+### STEP 6 — Test
+
+Provide appropriate test cases.
+
+### STEP 7 — Explain integration
+
+Explain how the endpoint will interact with the rest of the application.
+
+---
+
+# 52. WHEN YOU FIND MISSING DEPENDENCIES
+
+If the endpoint depends on code that another developer has not implemented yet:
+
+DO NOT invent a completely separate architecture.
+
+Instead:
+
+1. Identify the dependency.
+2. Define the expected interface.
+3. Create only the minimum temporary/shared abstraction required.
+4. Clearly mark what Person 2/3 must eventually provide.
+5. Keep the interface stable.
+
+Example:
+
+If Person 2's SafetySession model does not yet exist:
+
+```text
+Expected:
+SafetySession.findOne({
+  _id: safetySessionId,
+  userId
+})
+```
+
+Do not create a duplicate SafetySession implementation under Person 1.
+
+---
+
+# 53. DO NOT CHANGE OTHER DEVELOPERS' OWNERSHIP
+
+Unless I explicitly ask:
+
+Do NOT modify:
+
+```text
+voice/
+location/
+ride/
+safetySession/
+auth/
+assistant/
+dashboard/
+feedback/
+crime/
+transport/
+```
+
+Do not create alternative versions of their models.
+
+Do not move their files.
+
+Do not redesign their APIs.
+
+If integration requires a shared interface, tell me exactly what should be shared.
+
+---
+
+# 54. API VERSIONING
+
+All APIs use:
+
+```text
+/api/v1/
+```
+
+Example:
+
+```text
+/api/v1/sos
+```
+
+Do not remove the version prefix.
+
+---
+
+# 55. GENERAL RESPONSE FORMAT FOR FUTURE CODING REQUESTS
+
+When I ask you to implement an endpoint, respond/work in this order:
+
+```text
+1. Endpoint being implemented
+
+2. Purpose
+
+3. Dependencies
+
+4. Files to create/modify
+
+5. Request schema
+
+6. Response schema
+
+7. Backend dataflow
+
+8. Implementation
+
+9. Validation
+
+10. Error cases
+
+11. Security/authorization
+
+12. Integration with Person 2/3
+
+13. Test cases
+
+14. Manual API test example
+```
+
+If you are operating directly inside the repository, inspect the repository first and adapt the implementation to the actual codebase.
+
+Do not blindly paste generic code if equivalent infrastructure already exists.
+
+---
+
+# 56. MOST IMPORTANT DEVELOPMENT RULE
+
+When I later say something like:
+
+> "Implement POST /api/v1/sos"
+
+you should NOT reinterpret the entire application.
+
+You already have the complete context in this prompt.
+
+Implement only that endpoint and its necessary internal dependencies.
+
+Then wait for my next endpoint.
+
+---
+
+# 57. QUALITY BAR
+
+The final backend should be:
+
+* Modular
+* Secure
+* Maintainable
+* Testable
+* Real-time capable
+* Compatible with the other two developers
+* Minimal enough for a hackathon/MVP
+* Extensible enough for future features
+
+Do not overengineer the system.
+
+The goal is a practical production-style MVP, not a massive enterprise architecture.
+
+---
+
+# 58. FINAL OWNERSHIP SUMMARY
+
+## PERSON 1 — ME
+
+```text
+SOS
+├── SOS creation
+├── Verification
+├── Confirmation
+├── Cancellation
+├── Timeout
+├── State machine
+├── Escalation
+├── Guardian notification
+├── Guardian acknowledgement
+├── Nearby responder escalation
+├── Emergency escalation
+├── SOS history
+└── Calling
+
+Guardians
+├── Create
+├── List
+├── Update
+└── Delete
+
+Calling
+├── Token
+├── Start
+└── End
+```
+
+## PERSON 2
+
+```text
+Safety Session
+Location
+Ride
+OCR
+Route
+Off-route
+Long-stop
+Safe places
+Crime data
+Transport search
+```
+
+## PERSON 3
+
+```text
+Authentication
+Users
+Voice AI
+Transcription
+Translation
+LLM analysis
+AI assistant
+Dashboard
+Feedback
+```
+
+---
+
+# 59. FINAL ARCHITECTURE
+
+The complete system should conceptually work like this:
+
+```text
+                         ┌──────────────────────┐
+                         │       React          │
+                         │      Frontend        │
+                         └──────────┬───────────┘
+                                    │
+                      REST + Socket.IO
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Node + Express    │
+                         └──────────┬───────────┘
+                                    │
+             ┌──────────────────────┼──────────────────────┐
+             │                      │                      │
+             ▼                      ▼                      ▼
+       ┌───────────┐          ┌───────────┐          ┌───────────┐
+       │ Person 1  │          │ Person 2  │          │ Person 3  │
+       │ Emergency │          │  Journey  │          │ AI/Platform│
+       └─────┬─────┘          └─────┬─────┘          └─────┬─────┘
+             │                      │                      │
+             │                      │                      │
+             │                Safety Events                │
+             │                      │                      │
+             │◄─────────────────────┼──────────────────────┤
+             │                      │                      │
+             ▼                      ▼                      ▼
+          SOS Engine          Location/Ride          Voice AI
+             │                  Monitoring            Detection
+             │                      │                      │
+             └──────────────┬───────┴──────────────────────┘
+                            │
+                            ▼
+                       SOS State Machine
+                            │
+                 ┌──────────┼──────────┐
+                 ▼          ▼          ▼
+             Guardian    Nearby     Emergency
+                         Responder   Escalation
+                 │
+                 ▼
+             LiveKit /
+             ZEGOCLOUD
+                 │
+                 ▼
+              Guardian
+```
+
+---
+
+# 60. YOUR ROLE FROM THIS POINT FORWARD
+
+You are my backend coding agent.
+
+I am responsible for **Person 1**.
+
+Remember:
+
+> Understand the whole system, but code only my ownership.
+
+> Reuse shared infrastructure instead of duplicating it.
+
+> Keep the SOS engine deterministic.
+
+> Treat authentication and authorization as mandatory.
+
+> Treat SOS state transitions as controlled backend operations.
+
+> Treat safety events from Person 2/3 as integration inputs.
+
+> Do not create duplicate SOS logic inside other modules.
+
+> Do not implement Person 2 or Person 3 features unless explicitly instructed.
+
+I will now provide the first endpoint/feature to implement.
+
+Before coding, inspect the existing repository and adapt to its actual structure.

@@ -1,0 +1,347 @@
+# Comprehensive Backend Architecture Audit Report
+
+This report presents a thorough, read-only audit of the entire SafePulse backend codebase, covering all modules owned by **Person 1** (SOS, Guardians, Calling, Escalation, Responders), **Person 2** (Safety Session, Location, Ride Monitoring, Safe Places, Crime Map, Transport), and **Person 3** (Auth, Users, Voice Threat Analysis, Audio Storage, RAG Safety Assistant).
+
+---
+
+## 1. Module Analysis (Items 1–15 per Module)
+
+### 1. `sos` (`src/modules/sos/`)
+1. **Purpose:** Central SOS state machine (`VERIFYING` → `ACTIVE` → `GUARDIAN` → `NEARBY_RESPONDER` → `EMERGENCY_SERVICE` / `POLICE` / `RESOLVED` / `CANCELLED`).
+2. **APIs/Routes:** `POST /api/v1/sos`, `GET /api/v1/sos/active`, `GET /api/v1/sos/history`, `GET /api/v1/sos/:id`, `GET /api/v1/sos/:id/escalation`, `POST /api/v1/sos/:id/confirm`, `POST /api/v1/sos/:id/cancel`, `POST /api/v1/sos/:id/acknowledge`, `POST /api/v1/sos/:id/resolve`, `POST /api/v1/sos/:id/escalation/start`, `POST /api/v1/sos/:id/responders/notify`, `POST /api/v1/sos/:id/responders/:responderId/acknowledge`, `POST /api/v1/sos/:id/escalation/acknowledge`, `POST /api/v1/sos/:id/escalation/police`.
+3. **Models Used:** `SosEvent` (`sosEvents` collection), references [User](file:///d:/kolkata%20hackathon/Backend/tests/guardian.endpoint.test.js#46-48), `SafetySession`.
+4. **Utilities Used:** [ApiError](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#1-35), [asyncHandler](file:///d:/kolkata%20hackathon/Backend/src/utils/asyncHandler.js#1-3), `response` ([sendSuccess](file:///d:/kolkata%20hackathon/Backend/src/utils/response.js#1-3), [sendCreated](file:///d:/kolkata%20hackathon/Backend/src/utils/response.js#4-5), [sendError](file:///d:/kolkata%20hackathon/Backend/src/utils/response.js#6-10)), [emitToUserRoom](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#28-54) ([sockets/index.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js)), [isUserOnline](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#55-69).
+5. **External Services Used:** None directly (relies on LiveKit/Police via adjacent services).
+6. **Socket.IO Events Emitted:** `sos:verification-required`, `sos:confirmed`, `sos:cancelled`, `sos:timeout`, `sos:activated`, `sos:guardian-notified`, `sos:guardian-acknowledged`, `sos:escalating`, `sos:resolved`, `sos:guardian:notify`, `sos:responder:notify`, `sos:police:escalated`, `sos:guardian:acknowledged`, `sos:responder:acknowledged`, `responder:sos-notification`, `responder:sos-acknowledged`, `responder:sos-expired`. Listens to: None directly (triggered via REST / safetyEventBus bridge).
+7. **Internal Events Emitted/Listens:** Emits/Listens via in-memory timer callbacks for verification and escalation timeouts.
+8. **Modules Imported:** `guardians`, `calling`, `responders`, [police](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.events.js#575-592).
+9. **Modules Depending on It:** `webhooks` (indirectly), `safetyEventBus` consumers.
+10. **Internal Functionality:** Verification timer Map, atomic MongoDB state transitions, escalation step resolution, responder notification broadcast.
+11. **Duplicated Functionality:** None within Person 1; however, Person 3's `groqThreat` endpoint returns `sosTriggered: boolean` without posting to this module.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables Required:** `MONGODB_URI`, `GUARDIAN_ESCALATION_TIMEOUT_SECONDS`, `RESPONDER_ESCALATION_TIMEOUT_SECONDS`.
+14. **npm Dependencies Required:** `mongoose`, `express`, `zod`.
+15. **Assumptions About Other Modules:** Assumes `SafetySession` exists if `safetySessionId` provided; assumes [User](file:///d:/kolkata%20hackathon/Backend/tests/guardian.endpoint.test.js#46-48) exists for emergency settings.
+
+---
+
+### 2. `guardians` (`src/modules/guardians/`)
+1. **Purpose:** Manages user guardian relationships, invitations, priorities, and accept/reject flows.
+2. **APIs/Routes:** `POST /api/v1/guardians`, `GET /api/v1/guardians`, `PATCH /api/v1/guardians/:id`, `DELETE /api/v1/guardians/:id`, `POST /api/v1/guardians/:id/accept`, `POST /api/v1/guardians/:id/reject`.
+3. **Models Used:** [Guardian](file:///d:/kolkata%20hackathon/Backend/src/modules/guardians/guardian.service.js#69-77) (`guardians` collection), [User](file:///d:/kolkata%20hackathon/Backend/tests/guardian.endpoint.test.js#46-48).
+4. **Utilities Used:** [ApiError](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#1-35), [asyncHandler](file:///d:/kolkata%20hackathon/Backend/src/utils/asyncHandler.js#1-3), `response`, [emitToUserRoom](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#28-54).
+5. **External Services Used:** None.
+6. **Socket.IO Events Emitted:** `guardian:request`, `guardian:accepted`, `guardian:rejected`. Listens to: None.
+7. **Internal Events:** None.
+8. **Modules Imported:** `calling` (reuses [findUserById](file:///d:/kolkata%20hackathon/Backend/tests/call.service.test.js#1632-1638) helper).
+9. **Modules Depending on It:** `sos` (queries active guardians for escalation level 1).
+10. **Internal Functionality:** Atomic state changes (PENDING → ACTIVE / REJECTED / BLOCKED), priority sorting.
+11. **Duplicated Functionality:** None.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** None specific.
+14. **npm Dependencies:** `mongoose`, `express`, `zod`.
+15. **Assumptions About Other Modules:** Assumes [User](file:///d:/kolkata%20hackathon/Backend/tests/guardian.endpoint.test.js#46-48) collection contains valid guardian target profiles.
+
+---
+
+### 3. `calling` (`src/modules/calling/`)
+1. **Purpose:** Manages browser-to-browser emergency calls and LiveKit room token generation.
+2. **APIs/Routes:** `POST /api/v1/calls/start`, `POST /api/v1/calls/token`, `POST /api/v1/calls/:id/accept`, `POST /api/v1/calls/:id/reject`, `POST /api/v1/calls/end`.
+3. **Models Used:** [Call](file:///d:/kolkata%20hackathon/Backend/src/modules/calling/call.service.js#492-566) (`calls` collection), `SosEvent`, [User](file:///d:/kolkata%20hackathon/Backend/tests/guardian.endpoint.test.js#46-48), [Guardian](file:///d:/kolkata%20hackathon/Backend/src/modules/guardians/guardian.service.js#69-77).
+4. **Utilities Used:** [ApiError](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#1-35), [asyncHandler](file:///d:/kolkata%20hackathon/Backend/src/utils/asyncHandler.js#1-3), `response`, [emitToUserRoom](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#28-54).
+5. **External Services Used:** `livekit-server-sdk` (`AccessToken`).
+6. **Socket.IO Events Emitted:** `call:outgoing`, `call:ringing`, `call:accepted`, `call:rejected`, `call:connected`, `call:disconnected`, `call:failed`, `call:ended`.
+7. **Internal Events:** None.
+8. **Modules Imported:** `guardians` (queries guardians directly in repository).
+9. **Modules Depending on It:** `webhooks` (updates Call model based on LiveKit callbacks).
+10. **Internal Functionality:** Token minting, atomic call state machine (`OUTGOING` → `RINGING` → `ACCEPTED` → `CONNECTED` → `ENDED`).
+11. **Duplicated Functionality:** None.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_TOKEN_TTL_SECONDS`.
+14. **npm Dependencies:** `livekit-server-sdk`, `mongoose`, `express`, `zod`.
+15. **Assumptions About Other Modules:** Assumes an active `SosEvent` exists for starting an emergency call.
+
+---
+
+### 4. `location` (`src/modules/location/`)
+1. **Purpose:** Ingests and stores GPS pings, updates active safety session location, triggers monitoring evaluation.
+2. **APIs/Routes:** `POST /api/v1/location`, `POST /api/v1/location/batch`, `GET /api/v1/location/current/:userId`, `GET /api/v1/location/history`.
+3. **Models Used:** `LocationPoint` (`locations` collection).
+4. **Utilities Used:** `logger`, error helpers ([badRequest](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#11-14), [notFound](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#23-26)).
+5. **External Services Used:** None.
+6. **Socket.IO Events Emitted:** Emits `location:update` via socket handlers.
+7. **Internal Events:** Calls `monitoring.evaluateRidePoint` on every ping with a `rideId`.
+8. **Modules Imported:** `safetySession.service`, `monitoring.service`.
+9. **Modules Depending on It:** `ride` (uses location history for trails).
+10. **Internal Functionality:** TTL index management, batch ping insertion, current location lookup.
+11. **Duplicated Functionality:** Socket vs HTTP ping ingestion logic slightly duplicated in `src/sockets/location.socket.js`.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** `LOCATION_TTL_DAYS`.
+14. **npm Dependencies:** `mongoose`, `express`, `zod`.
+15. **Assumptions About Other Modules:** Assumes `safetySession` and `ride` modules exist.
+
+---
+
+### 5. `safetySession` (`src/modules/safetySession/`)
+1. **Purpose:** Session container for safety tracking bracketed by start/end times.
+2. **APIs/Routes:** `POST /api/v1/safety-sessions`, `GET /api/v1/safety-sessions/active`, `GET /api/v1/safety-sessions`, `GET /api/v1/safety-sessions/:id`, `POST /api/v1/safety-sessions/:id/end`.
+3. **Models Used:** `SafetySession` (`safetySessions` collection).
+4. **Utilities Used:** Error helpers, response helpers.
+5. **External Services Used:** None.
+6. **Socket.IO Events Emitted:** None directly.
+7. **Internal Events:** None.
+8. **Modules Imported:** None.
+9. **Modules Depending on It:** `location`, `ride`, `sos`.
+10. **Internal Functionality:** Single active session enforcement per user.
+11. **Duplicated Functionality:** None.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** None.
+14. **npm Dependencies:** `mongoose`, `express`.
+15. **Assumptions About Other Modules:** None.
+
+---
+
+### 6. `ride` (`src/modules/ride/`)
+1. **Purpose:** Manages ride lifecycle from screenshot upload (Cloudinary + OCR + AI prefill) to route calculation and monitoring.
+2. **APIs/Routes:** `POST /api/v1/rides/upload`, `GET /api/v1/rides`, `GET /api/v1/rides/:id`, `POST /api/v1/rides/:id/confirm`, `POST /api/v1/rides/:id/start`, `POST /api/v1/rides/:id/stop`.
+3. **Models Used:** [Ride](file:///d:/kolkata%20hackathon/Backend/src/modules/ride/ride.service.js#38-43) (`rides` collection).
+4. **Utilities Used:** `geo` ([haversineMeters](file:///d:/kolkata%20hackathon/Backend/src/utils/geo.js#24-34)), `logger`, [socket.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/socket.js) helpers (`emitToRide`, [emitToUser](file:///d:/kolkata%20hackathon/Backend/src/sockets/authSocket.js#44-48)).
+5. **External Services Used:** Google Maps API (Directions/Geocoding), Cloudinary, Tesseract.js (OCR), Groq AI.
+6. **Socket.IO Events Emitted:** `ride:started`, `ride:updated`, `ride:offRoute`, `ride:longStop`.
+7. **Internal Events:** Emits `OFF_ROUTE` and `LONG_STOP` onto `safetyEventBus`.
+8. **Modules Imported:** `googleMaps`, `safetySession.service`, [socket.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/socket.js).
+9. **Modules Depending on It:** `monitoring`, `location`.
+10. **Internal Functionality:** Synthetic straight-line fallback routes if Google Maps is disabled.
+11. **Duplicated Functionality:** Socket helper usages differ between Person 1's [emitToUserRoom](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#28-54) and Person 2's `src/socket/socket.js`.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** `GOOGLE_MAPS_API_KEY`, `CLOUDINARY_*`, `GROQ_API_KEY`.
+14. **npm Dependencies:** `mongoose`, `express`.
+15. **Assumptions About Other Modules:** Assumes `safetySession` exists to attach ride.
+
+---
+
+### 7. `monitoring` (`src/modules/monitoring/`)
+1. **Purpose:** Evaluates GPS pings against active ride routes to detect route deviations and long stops.
+2. **APIs/Routes:** None (internal facade).
+3. **Models Used:** [Ride](file:///d:/kolkata%20hackathon/Backend/src/modules/ride/ride.service.js#38-43).
+4. **Utilities Used:** `safetyEventBus` ([emitSafetyEvent](file:///d:/kolkata%20hackathon/Backend/src/utils/safetyEventBus.js#32-55)), `geo` ([distanceToPolylineMeters](file:///d:/kolkata%20hackathon/Backend/src/utils/geo.js#61-74)).
+5. **External Services Used:** None.
+6. **Socket.IO Events Emitted:** Fires events through `safetyEventBus` which are bridged to socket rooms.
+7. **Internal Events:** Emits `OFF_ROUTE` and `LONG_STOP` on `safetyEventBus`.
+8. **Modules Imported:** `ride.model`, `routeMonitor.service`, `stopDetector.service`, `safetyEventBus`.
+9. **Modules Depending on It:** `location.service`.
+10. **Internal Functionality:** Debounced 3-ping off-route check, 300s long-stop anchor check.
+11. **Duplicated Functionality:** None.
+12. **Imports/Exports Status:** Intact ES modules.
+13. **Environment Variables:** `OFF_ROUTE_THRESHOLD_M`, `STOP_SECONDS`.
+14. **npm Dependencies:** `mongoose`.
+15. **Assumptions About Other Modules:** Assumes `safetyEventBus` listeners (Person 1) handle the emitted detection events.
+
+---
+
+### 8. `voice` (`src/modules/voice/`)
+1. **Purpose:** Voice threat classification (STT text → threat score 0–100) and audio recording upload/streaming.
+2. **APIs/Routes:** `POST /api/v1/voice/analyze`, `POST /api/v1/voice/recordings`, `GET /api/v1/voice/recordings`, `GET /api/v1/voice/recordings/:recordingId/audio`.
+3. **Models Used:** [VoiceRecording](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js#179-213) (`voicerecordings` collection).
+4. **Utilities Used:** `translate.middleware`, `upload.middleware`.
+5. **External Services Used:** Groq API (threat classification), Gemini API (translation), Cloudinary.
+6. **Socket.IO Events Emitted:** None.
+7. **Internal Events:** None.
+8. **Modules Imported:** `groqThreat.service`, `cloudinary.service`, `geminiTranslate.service`.
+9. **Modules Depending on It:** None.
+10. **Internal Functionality:** 50-point threat threshold calculation (`sosTriggered = threatLevel > 50`).
+11. **Duplicated Functionality:** **CRITICAL SCRIPT CONFLICT:** Written in CommonJS ([require](file:///d:/kolkata%20hackathon/Backend/src/middleware/auth.js#16-38)/`module.exports`) inside an ES Module project (`"type": "module"` in [package.json](file:///d:/kolkata%20hackathon/Backend/package.json)).
+12. **Imports/Exports Status:** ❌ **BROKEN**: Using [require()](file:///d:/kolkata%20hackathon/Backend/src/middleware/auth.js#16-38) and `module.exports` will crash Node ESM runtime on import.
+13. **Environment Variables:** `GROQ_API_KEY`, `GEMINI_API_KEY`, `CLOUDINARY_*`.
+14. **npm Dependencies:** `multer`, `cloudinary`, `mongoose`, `express`.
+15. **Assumptions About Other Modules:** Assumes client manually calls SOS endpoint if `sosTriggered` is true (does NOT call Person 1's [sos.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js)).
+
+---
+
+### 9. `assistant` (`src/modules/assistant/`)
+1. **Purpose:** RAG-based AI safety chatbot using vector search over local markdown knowledge bases.
+2. **APIs/Routes:** `POST /api/v1/assistant/chat`.
+3. **Models Used:** `ChatSession`, `ChatMessage`, `KnowledgeChunk`.
+4. **Utilities Used:** `contextBuilder.service`, `vectorStore.service`, `geminiChat.service`.
+5. **External Services Used:** Google Gemini API, Jina Embeddings API.
+6. **Socket.IO Events Emitted:** None.
+7. **Internal Events:** None.
+8. **Modules Imported:** [assistant.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.controller.js).
+9. **Modules Depending on It:** None.
+10. **Internal Functionality:** Multilingual language/script detection, conversation summarization, RAG prompt assembly.
+11. **Duplicated Functionality:** ❌ **CRITICAL SCRIPT CONFLICT:** Written in CommonJS ([require](file:///d:/kolkata%20hackathon/Backend/src/middleware/auth.js#16-38)/`module.exports`).
+12. **Imports/Exports Status:** ❌ **BROKEN**: Cannot be imported by ES module app entry point without refactoring to `import`/`export`.
+13. **Environment Variables:** `GEMINI_API_KEY`, `JINA_API_KEY`.
+14. **npm Dependencies:** `express`, `mongoose`.
+15. **Assumptions About Other Modules:** Assumes `knowledgechunks` collection is populated via ingestion script.
+
+---
+
+### 10. `emergency transport` (`src/modules/person 3 services/`)
+1. **Purpose:** Searches for emergency transport (flights, trains, cabs) between victim and guardian locations.
+2. **APIs/Routes:** `POST /api/v1/emergency/transport/search`.
+3. **Models Used:** None.
+4. **Utilities Used:** None.
+5. **External Services Used:** Google Gemini API (location resolver), Tavily API (search).
+6. **Socket.IO Events Emitted:** None.
+7. **Internal Events:** None.
+8. **Modules Imported:** `geminiLocationResolver.service`, `tavilyTransport.service`.
+9. **Modules Depending on It:** None.
+10. **Internal Functionality:** Parallel category searches with fallback error handling.
+11. **Duplicated Functionality:** Separate transport search module exists in Person 2 (`src/modules/transport/`).
+12. **Imports/Exports Status:** Mixed ESM and CommonJS exports across services.
+13. **Environment Variables:** `GEMINI_API_KEY`, `TAVILY_API_KEY`.
+14. **npm Dependencies:** `express`.
+15. **Assumptions About Other Modules:** None.
+
+---
+
+## 2. Module Map (A)
+
+```text
+sos → Central SOS state & escalation → sos.routes.js, sos.service.js, sos.repository.js, sos.model.js → /api/v1/sos/* → startGuardianEscalation, startResponderEscalation, escalateToPolice → guardians, calling, responders, police, sockets
+
+guardians → Guardian invites & priority → guardian.routes.js, guardian.service.js, guardian.repository.js, guardian.model.js → /api/v1/guardians/* → createGuardian, acceptGuardian, rejectGuardian → calling, User, sockets
+
+calling → WebRTC emergency calling → call.routes.js, call.service.js, call.repository.js, call.model.js → /api/v1/calls/* → startEmergencyCall, createCallToken, acceptCall, rejectCall, endCall → guardians, livekit-server-sdk, sockets
+
+location → GPS ping ingestion & history → location.routes.js, location.service.js, location.model.js → /api/v1/location/* → recordPoint, getHistory → safetySession, monitoring
+
+ride → Ride creation, OCR & route tracking → ride.routes.js, ride.service.js, ride.model.js → /api/v1/rides/* → confirmRide, startRide, stopRide → googleMaps, safetySession, sockets
+
+monitoring → Detection of off-route & long-stop → monitoring.service.js, routeMonitor.service.js, stopDetector.service.js → None (internal) → evaluateRidePoint, checkOffRoute, checkLongStop → safetyEventBus, ride.model
+
+voice → Threat scoring & audio recordings → voice.routes.js, voice.controller.js, voiceRecording.model.js → /api/v1/voice/* → analyzeVoice, recordVoiceRecording → groqThreat, geminiTranslate, cloudinary
+
+assistant → RAG safety chatbot → assistant.routes.js, assistant.controller.js, chatSession.model.js, chatMessage.model.js → /api/v1/assistant/chat → chat → geminiChat, jinaEmbedding, vectorStore
+
+webhooks → LiveKit voice state sync → webhook.routes.js, webhook.service.js, webhook.controller.js → /api/v1/webhooks/livekit → handleLiveKitEvent → call.repository, calling.events
+```
+
+---
+
+## 3. Actual Dependency Graph (B)
+
+```text
+sos → guardians
+  Why: sos.service requires guardian records to build Escalation Level 1 (Guardian Stage).
+  Which function/file: escalation.service.js -> startGuardianEscalation() calls guardianRepository.findActiveGuardians().
+  Equivalent functionality: None.
+
+sos → calling
+  Why: sos.service requires user profiles to resolve display names for socket event payloads.
+  Which function/file: sos.service.js -> acknowledgeSOS() calls callRepository.findUserById().
+  Equivalent functionality: Duplicate user lookup logic exists in guardian.dependencies.js.
+
+calling → guardians
+  Why: calling.service requires checking if a guardian account is active before starting an emergency call.
+  Which function/file: call.service.js -> selectGuardian() calls callRepository.findActiveGuardians().
+  Equivalent functionality: Duplicated repository query.
+
+location → safetySession
+  Why: location.service updates the last known GPS coordinate on the parent safety session.
+  Which function/file: location.service.js -> recordPoint() calls safetySession.service.updateLastLocation().
+  Equivalent functionality: None.
+
+location → monitoring
+  Why: location.service triggers route/stop detection when a ping has an associated rideId.
+  Which function/file: location.service.js -> recordPoint() calls monitoring.service.evaluateRidePoint().
+  Equivalent functionality: None.
+
+monitoring → safetyEventBus
+  Why: monitoring.service emits detected safety anomalies (OFF_ROUTE, LONG_STOP) for system-wide consumption.
+  Which function/file: routeMonitor.service.js & stopDetector.service.js call safetyEventBus.emitSafetyEvent().
+  Equivalent functionality: None.
+
+webhooks → calling
+  Why: LiveKit webhook service updates the internal Call state machine when WebRTC media connects/disconnects.
+  Which function/file: webhook.service.js calls call.repository functions (markConnected, markEndedFromWebhook, markFailedFromWebhook).
+  Equivalent functionality: None.
+```
+
+---
+
+## 4. Duplicate Functionality (C)
+
+1. **Duplicate Socket.IO Initialization & Handlers:**
+   - Person 1 uses [src/sockets/index.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js) + [src/sockets/authSocket.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/authSocket.js) ([emitToUserRoom](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js#28-54)).
+   - Person 2 uses `src/socket/socket.js` ([emitToUser](file:///d:/kolkata%20hackathon/Backend/src/sockets/authSocket.js#44-48), `emitToRide`, `emitToSession`).
+   - *Risk:* Two different socket initialization pathways and room naming standards exist in the same codebase.
+
+2. **Duplicate Transport Search Services:**
+   - Person 2 has `src/modules/transport/` (`/api/v1/transport/search` using Google Places).
+   - Person 3 has `src/modules/person 3 services/tavilyTransport.service.js` (`/api/v1/emergency/transport/search` using Tavily + Gemini).
+   - *Risk:* Two unlinked transport endpoints with different route signatures.
+
+3. **Duplicate User Profile / Account Lookups:**
+   - [sos.dependencies.js](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.dependencies.js), [guardian.dependencies.js](file:///d:/kolkata%20hackathon/Backend/src/modules/guardians/guardian.dependencies.js), and [call.repository.js](file:///d:/kolkata%20hackathon/Backend/src/modules/calling/call.repository.js) all contain separate Mongoose queries for `User.findById()`.
+
+4. **Duplicate Error Handlers:**
+   - Person 1 & 2 use [src/middleware/errorHandler.js](file:///d:/kolkata%20hackathon/Backend/src/middleware/errorHandler.js) + [ApiError.js](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js).
+   - Person 3 modules use custom error response helpers ([badRequest(res, code, message)](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#11-14)) inline inside [voice.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js) and [assistant.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.controller.js).
+
+5. **Duplicate Cloudinary Setup:**
+   - Person 2 has `src/integrations/cloudinary/cloudinary.js`.
+   - Person 3 has `src/modules/person 3 services/cloudinary.service.js`.
+
+---
+
+## 5. Integration Risks (D)
+
+1. **Syntax Mismatch (ESM vs CommonJS):**
+   - [package.json](file:///d:/kolkata%20hackathon/Backend/package.json) specifies `"type": "module"`.
+   - All Person 1 & Person 2 modules use ES module syntax (`import`/`export`).
+   - Person 3 modules ([voice.routes.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.routes.js), [voice.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js), [assistant.routes.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.routes.js), [assistant.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.controller.js)) use CommonJS syntax ([require](file:///d:/kolkata%20hackathon/Backend/src/middleware/auth.js#16-38)/`module.exports`).
+   - *Impact:* Server boot will crash with `ReferenceError: require is not defined in ES module scope` if Person 3 routes are mounted directly.
+
+2. **Unconnected Safety Event Bus (SOS Trigger Gap):**
+   - Person 2 emits `OFF_ROUTE` and `LONG_STOP` to `safetyEventBus`.
+   - Person 3 returns `sosTriggered: true` from `/api/v1/voice/analyze` but does NOT emit to `safetyEventBus`.
+   - [sos.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js) has no listener registered on `safetyEventBus` to automatically call [createSOS()](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js#166-253).
+   - *Impact:* Automated detections (Voice Danger, Off Route, Long Stop) stay completely isolated and never auto-create an SOS in `VERIFYING` state.
+
+3. **Database Collection Naming Mismatch:**
+   - Person 1 models use explicit `collection: 'sosEvents'`, `collection: 'guardians'`, `collection: 'calls'`.
+   - Person 3 models use default Mongoose pluralization (`chatsessions`, `chatmessages`, `knowledgechunks`, `voicerecordings`).
+
+4. **Missing Route Mounts in [app.js](file:///d:/kolkata%20hackathon/Backend/src/app.js):**
+   - [app.js](file:///d:/kolkata%20hackathon/Backend/src/app.js) currently only mounts Person 1 routes (`/api/v1/sos`, `/api/v1/guardians`, `/api/v1/calls`, `/api/v1/responders`, `/api/v1/webhooks`).
+   - Person 2 routes (`/safety-sessions`, `/location`, `/rides`, `/safe-places`, `/crime`, `/transport`) and Person 3 routes (`/voice`, `/assistant`) are completely unmounted.
+
+---
+
+## 6. End-to-End Flow Problems (E)
+
+1. **Flow 1: Ride → Safety Session → Monitoring → Voice → SOS**
+   - *Broken Link:* [monitoring.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/monitoring/monitoring.service.js) emits `OFF_ROUTE` to `safetyEventBus`, but [sos.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js) never subscribes to `safetyEventBus`.
+   - *Broken Link:* [voice.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js) analyzes voice threat via Groq, but does not emit `VOICE_DANGER` to `safetyEventBus` or invoke [createSOS()](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js#166-253).
+
+2. **Flow 2: SOS → Guardian → Responders → Police**
+   - *Intact Internal Mechanics:* Person 1's internal escalation chain (`VERIFYING` → `ACTIVE` → `GUARDIAN` → `NEARBY_RESPONDER` → `POLICE`) is 100% complete and fully verified via tests.
+
+3. **Flow 3: Guardian Request → Accept/Reject**
+   - *Intact Internal Mechanics:* Person 1's guardian request and accept/reject flows are 100% complete and bound to socket notifications.
+
+4. **Flow 4: Guardian Transport → Location**
+   - *Broken Link:* Person 3's `/api/v1/emergency/transport/search` expects victim/guardian coordinates, but does not pull live coordinates from Person 2's [location.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/location/location.service.js) or `LocationPoint` collection.
+
+---
+
+## 7. Recommended Integration Plan (F)
+
+### Priority P0: Fix Server Startup & Module Mismatches
+1. Refactor Person 3 CommonJS files ([voice.routes.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.routes.js), [voice.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js), [assistant.routes.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.routes.js), [assistant.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/assistant/assistant.controller.js), and associated services/models) to standard ES Module syntax (`import`/`export`).
+2. Consolidate Socket.IO initializers ([src/sockets/index.js](file:///d:/kolkata%20hackathon/Backend/src/sockets/index.js) vs `src/socket/socket.js`) into a single unified socket gateway.
+3. Mount all Person 2 and Person 3 routes in [src/app.js](file:///d:/kolkata%20hackathon/Backend/src/app.js).
+
+### Priority P1: Connect Cross-Module Safety Event Bus
+1. Connect `safetyEventBus` to [sos.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js) by registering an [onSafetyEvent](file:///d:/kolkata%20hackathon/Backend/src/utils/safetyEventBus.js#56-61) listener that automatically calls [createSOS()](file:///d:/kolkata%20hackathon/Backend/src/modules/sos/sos.service.js#166-253) with `triggerType: event.type` (`OFF_ROUTE`, `LONG_STOP`, `GEOFENCE_BREACH`).
+2. Update [voice.controller.js](file:///d:/kolkata%20hackathon/Backend/src/modules/voice/voice.controller.js) so that when `threatLevel > 50`, it emits a standardized `VOICE_DANGER` safety event onto `safetyEventBus`.
+
+### Priority P2: Correct Business Behavior & Endpoint Alignment
+1. Wire Person 3's emergency transport search endpoint (`/api/v1/emergency/transport/search`) to automatically query Person 2's [location.service.js](file:///d:/kolkata%20hackathon/Backend/src/modules/location/location.service.js) for the latest victim/guardian coordinates if explicit coordinates are omitted.
+2. Unify error handling across Person 3 controllers by adopting [ApiError](file:///d:/kolkata%20hackathon/Backend/src/utils/ApiError.js#1-35) and [asyncHandler](file:///d:/kolkata%20hackathon/Backend/src/utils/asyncHandler.js#1-3).
+
+### Priority P3: Cleanup & Refactoring
+1. Deduplicate Cloudinary utility modules (`src/integrations/cloudinary/` vs `src/modules/person 3 services/cloudinary.service.js`).
+2. Align collection names and indexes across all models.
