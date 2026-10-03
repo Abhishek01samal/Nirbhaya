@@ -23,6 +23,7 @@ export const env = Object.freeze({
   mongodbUri: process.env.MONGODB_URI || '',
 
   jwtSecret: process.env.JWT_SECRET || '',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
 
   corsOrigin: process.env.CORS_ORIGIN || '*',
   socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || process.env.CORS_ORIGIN || '*',

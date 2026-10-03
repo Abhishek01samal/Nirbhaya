@@ -3,6 +3,10 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import { notFoundHandler, errorHandler } from './middleware/errorHandler.js';
 
+// Auth + users (Person 3)
+import authRoutes from './modules/auth/auth.routes.js';
+import userRoutes from './modules/users/user.routes.js';
+
 // Person 1 routes
 import sosRoutes from './modules/sos/sos.routes.js';
 import guardianRoutes from './modules/guardians/guardian.routes.js';
@@ -41,6 +45,10 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok', uptime: process.uptime() } });
 });
+
+// --- Auth & users ---
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // --- Person 1 routes ---
 app.use('/api/v1/sos', sosRoutes);
