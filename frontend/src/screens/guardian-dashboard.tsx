@@ -1,7 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Phone, MessageCircle, Video, ShieldAlert, CheckCircle2, AlertTriangle, Clock, Activity, PhoneCall, PhoneIncoming } from "lucide-react";
+import {
+  Bell,
+  Phone,
+  MessageCircle,
+  Video,
+  CheckCircle2,
+  AlertTriangle,
+  Clock,
+  Activity,
+  Navigation,
+  Radio,
+  Gauge,
+  ChevronRight,
+  Siren,
+  MapPinned,
+} from "lucide-react";
 import { Page } from "@/components/site/shell";
 import { SafetyMap } from "@/components/site/safety-map";
 import { Button } from "@/components/ui/button";
@@ -37,6 +52,7 @@ const JOURNEY = {
   started: "9:48 PM",
   transport: "Cab",
   eta: "10:35 PM",
+  minsAway: 13,
   status: "On expected route",
   driver: "Rahul",
   vehicle: "White Swift",
@@ -62,12 +78,12 @@ const NOTIFICATIONS = [
 ];
 
 const TIMELINE = [
-  "SOS activated",
-  "Guardian notified",
-  "Location received",
-  "Guardian acknowledged",
-  "Emergency escalation started",
-];
+  { at: "10:21:03", text: "SOS activated", tone: "red" },
+  { at: "10:21:08", text: "Guardian notified", tone: "red" },
+  { at: "10:21:15", text: "Live location shared", tone: "amber" },
+  { at: "10:21:42", text: "Guardian acknowledged", tone: "emerald" },
+  { at: "10:22:10", text: "Emergency escalation started", tone: "emerald" },
+] as const;
 
 const SETTINGS = [
   "SOS alerts",
@@ -78,7 +94,37 @@ const SETTINGS = [
   "Long stop",
 ];
 
-const card = "rounded-2xl border border-border/70 bg-surface/70 p-5 shadow-sm backdrop-blur-sm";
+const toneMap = {
+  red: "bg-red-500 text-red-500",
+  amber: "bg-amber-500 text-amber-500",
+  emerald: "bg-emerald-500 text-emerald-500",
+} as const;
+
+const card = "rounded-3xl border border-border/70 bg-gradient-to-b from-surface/90 to-surface/60 p-6 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_18px_40px_-24px_rgba(0,0,0,0.6)] backdrop-blur-sm transition-colors hover:border-border";
+
+function StatTile({ icon: Icon, label, value, hint, tone = "default" }: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  hint: string;
+  tone?: "default" | "red" | "emerald";
+}) {
+  const tones = {
+    default: "text-foreground from-foreground/5",
+    red: "text-red-500 from-red-500/10",
+    emerald: "text-emerald-500 from-emerald-500/10",
+  } as const;
+  return (
+    <div className={`group relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br ${tones[tone]} to-transparent p-4`}>
+      <div className="flex items-center justify-between">
+        <span className="label-mono">{label}</span>
+        <Icon className={`size-4 ${tones[tone].split(" ")[0]}`} />
+      </div>
+      <p className="mt-3 font-display text-3xl leading-none">{value}</p>
+      <p className="mt-1.5 font-mono text-[11px] uppercase tracking-widest text-foreground/70">{hint}</p>
+    </div>
+  );
+}
 
 export function GuardianDashboard() {
   const { active, sos } = useSos();
@@ -118,122 +164,196 @@ export function GuardianDashboard() {
         ? "Ringing…"
         : callState === "answered"
           ? `${guardian.name} picked up the call`
-          : "Not calling";
+          : "Standby";
+  const steps = ["Dialing", "Ringing", "Picked up"];
+  const stepIndex = callState === "dialing" ? 0 : callState === "ringing" ? 1 : callState === "answered" ? 2 : -1;
+  const initials = guardian.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <Page>
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-5xl uppercase leading-none tracking-tight md:text-6xl">Guardian</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Live view of Priya's safety state and journey.</p>
-        </div>
-        <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest ${active ? "bg-red-500/10 text-red-500" : "bg-emerald-500/10 text-emerald-500"}`}>
-          <span className="relative flex size-2">
-            <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${active ? "bg-red-500" : "bg-emerald-500"}`} />
-            <span className={`relative inline-flex size-2 rounded-full ${active ? "bg-red-500" : "bg-emerald-500"}`} />
-          </span>
-          {active ? "Emergency" : "Safe"}
-        </span>
-      </div>
-
-      {/* Status card */}
+      {/* Hero banner */}
       <Reveal>
-        <div className={`mt-6 rounded-2xl border p-6 ${active ? "border-red-500/40 bg-gradient-to-br from-red-950/40 to-red-900/10" : "border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 to-emerald-900/5"}`}>
-          <p className={`font-display text-4xl uppercase ${active ? "text-red-500" : "text-emerald-500"}`}>
-            ● {active ? "Emergency" : "Safe"}
-          </p>
-          <p className="mt-2 text-sm">{active ? "Priya activated SOS." : "Priya is currently on a journey."}</p>
-          <p className="mt-1 font-mono text-[10px] uppercase text-muted-foreground">Last update: {at ?? "10:42 PM"} · Location updated 12 sec ago</p>
+        <div className="relative overflow-hidden rounded-[28px] border border-red-500/40 bg-[radial-gradient(120%_140%_at_0%_0%,rgba(220,38,38,0.35),rgba(127,29,29,0.12)_45%,transparent_75%),linear-gradient(180deg,rgba(23,3,3,0.9),rgba(10,2,2,0.75))] p-7 md:p-9">
+          <div className="pointer-events-none absolute -top-16 -right-10 size-64 rounded-full bg-red-600/20 blur-3xl" />
+          <div className="pointer-events-none absolute right-24 bottom-0 size-40 rounded-full bg-orange-500/10 blur-3xl" />
+
+          <div className="relative flex flex-wrap items-start justify-between gap-6">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-red-500/50 bg-red-500/15 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-red-400">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-red-500" />
+                </span>
+                SOS active
+              </span>
+              <h1 className="mt-5 font-display text-6xl leading-[0.9] tracking-tight text-white uppercase md:text-7xl">
+                Emergency<span className="text-red-500">.</span>
+              </h1>
+              <p className="mt-4 max-w-xl text-sm text-red-100/70">
+                Priya activated SOS. Live location, journey and vitals are streaming to her guardian circle.
+                Escalation is running automatically until acknowledged.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] uppercase">
+                {[
+                  { k: "Activated", v: at ?? "10:21 PM" },
+                  { k: "Trigger", v: sos?.triggerType ?? "MANUAL" },
+                  { k: "GPS", v: "live · 12s ago" },
+                  { k: "Escalation", v: "Level 2" },
+                ].map((chip) => (
+                  <span key={chip.k} className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-red-100/80 backdrop-blur">
+                    <span className="text-red-300/60">{chip.k}:</span> {chip.v}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative grid size-28 shrink-0 place-items-center md:size-36">
+              <span className="absolute inset-0 animate-ping rounded-full border border-red-500/40" style={{ animationDuration: "2.4s" }} />
+              <span className="absolute inset-3 animate-ping rounded-full border border-red-500/30" style={{ animationDuration: "1.6s" }} />
+              <span className="absolute inset-6 rounded-full bg-red-500/20 blur-xl" />
+              <span className="relative grid size-16 place-items-center rounded-full bg-red-600 shadow-[0_0_50px_rgba(220,38,38,0.7)] md:size-20">
+                <Siren className="size-8 text-white md:size-9" />
+              </span>
+            </div>
+          </div>
         </div>
       </Reveal>
 
-      {/* Emergency panel */}
-      {active && (
-        <Reveal>
-          <div className="mt-4 rounded-2xl border-2 border-red-600 bg-red-950/30 p-6">
-            <p className="flex items-center gap-2 font-display text-2xl uppercase text-red-500"><ShieldAlert className="size-5" /> Emergency</p>
-            <p className="mt-2 text-sm">Priya activated SOS</p>
-            <p className="mt-1 font-mono text-xs text-muted-foreground">
-              Location: {sos?.location ? `${sos.location.lat.toFixed(2)}, ${sos.location.lng.toFixed(2)}` : "19.31, 84.79"} · Activated: {at ?? "10:21 PM"}
-            </p>
-            <div className="mt-5 flex gap-2">
-              <Button size="sm" variant="destructive" className="rounded-full"><Phone className="mr-1 size-3" /> Call {guardian.name}</Button>
-              <Button size="sm" variant="outline" className="rounded-full">View location</Button>
-            </div>
-          </div>
-        </Reveal>
-      )}
+      {/* Quick stats */}
+      <div className="mt-5 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Reveal delay={40}><StatTile icon={Clock} label="Response" value="00:42" hint="since SOS" tone="red" /></Reveal>
+        <Reveal delay={80}><StatTile icon={Bell} label="Guardians" value="3 / 3" hint="notified instantly" /></Reveal>
+        <Reveal delay={120}><StatTile icon={Radio} label="Location" value="±7 m" hint="gps accuracy" tone="emerald" /></Reveal>
+        <Reveal delay={160}><StatTile icon={Navigation} label="Route" value="98%" hint="on expected path" tone="emerald" /></Reveal>
+      </div>
 
-      {/* Guardian call status */}
-      <Reveal delay={40}>
-        <div className={`mt-4 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-6 ${callState === "answered" ? "border-emerald-500/40 bg-emerald-950/15" : "border-border/70 bg-surface/70 backdrop-blur-sm"}`}>
-          <div className="flex items-center gap-4">
-            <span className={`grid size-12 place-items-center rounded-full ${callState === "answered" ? "bg-emerald-500/15 text-emerald-500" : active ? "bg-red-500/15 text-red-500" : "bg-foreground/5 text-muted-foreground"}`}>
-              {callState === "answered" ? <PhoneIncoming className="size-5" /> : <PhoneCall className="size-5" />}
-            </span>
-            <div>
-              <p className="font-display text-2xl uppercase leading-none">{guardian.name}</p>
-              <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Primary guardian · {guardian.relation} · {guardian.phone}</p>
+      {/* Guardian call card */}
+      <Reveal delay={80}>
+        <div className={`mt-6 rounded-3xl border p-6 backdrop-blur-sm transition-all md:p-7 ${callState === "answered" ? "border-emerald-500/40 bg-gradient-to-r from-emerald-950/40 via-surface/80 to-surface/50 shadow-[0_0_50px_-20px_rgba(16,185,129,0.5)]" : "border-border/70 bg-surface/80"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                {active && callState !== "answered" && (
+                  <span className="absolute -inset-1.5 animate-ping rounded-full border-2 border-red-500/50" style={{ animationDuration: "1.4s" }} />
+                )}
+                <span className={`relative grid size-16 place-items-center rounded-full font-display text-xl md:size-18 ${callState === "answered" ? "bg-emerald-500/15 text-emerald-500 ring-2 ring-emerald-500/50" : "bg-red-500/15 text-red-500 ring-2 ring-red-500/40"}`}>
+                  {initials}
+                </span>
+              </div>
+              <div>
+                <p className="label-mono">Primary guardian · {guardian.relation}</p>
+                <p className="mt-1.5 font-display text-3xl uppercase leading-none md:text-4xl">{guardian.name}</p>
+                <p className="mt-2 font-mono text-xs text-foreground/70">{guardian.phone}</p>
+              </div>
             </div>
+
+            <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2.5 font-mono text-xs uppercase tracking-widest ${callState === "answered" ? "bg-emerald-500/15 text-emerald-500" : active ? "bg-red-500/10 text-red-500" : "bg-foreground/5 text-foreground/70"}`}>
+              <span className={`size-2 rounded-full ${callState === "answered" ? "bg-emerald-500" : active ? "animate-pulse bg-red-500" : "bg-muted-foreground"}`} />
+              {callLabel}
+            </span>
           </div>
-          <span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[10px] uppercase tracking-widest ${callState === "answered" ? "bg-emerald-500/15 text-emerald-500" : active ? "bg-red-500/10 text-red-500" : "bg-foreground/5 text-muted-foreground"}`}>
-            <span className={`size-2 rounded-full ${callState === "answered" ? "bg-emerald-500" : active ? "animate-pulse bg-red-500" : "bg-muted-foreground"}`} />
-            {callLabel}
-          </span>
+
+          {/* Call progress steps */}
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            {steps.map((s, i) => (
+              <div key={s}>
+                <div className={`h-1.5 rounded-full transition-all duration-500 ${stepIndex >= i ? (callState === "answered" ? "bg-emerald-500" : "bg-red-500") : "bg-foreground/10"}`} />
+                <p className={`mt-2 font-mono text-[11px] uppercase tracking-widest ${stepIndex >= i ? (callState === "answered" ? "text-emerald-500" : "text-red-500") : "text-foreground/70"}`}>
+                  {i + 1}. {s}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <Button size="sm" className="rounded-full bg-red-600 text-white hover:bg-red-700"><Phone className="mr-1.5 size-3.5" /> Call {guardian.name}</Button>
+            <Button size="sm" variant="outline" className="rounded-full"><MessageCircle className="mr-1.5 size-3.5" /> Message</Button>
+            <Button size="sm" variant="outline" className="rounded-full"><Video className="mr-1.5 size-3.5" /> Video</Button>
+            <p className={`ml-auto font-mono text-xs ${callState === "answered" ? "text-emerald-500" : "text-foreground/70"}`}>
+              {callState === "answered"
+                ? `SOS sent successfully — location & journey shared with ${guardian.name}.`
+                : active
+                  ? `Dialing ${guardian.name} · SOS delivers the moment the call is picked up…`
+                  : "No active call."}
+            </p>
+          </div>
         </div>
-        {active && (
-          <p className={`mt-2 font-mono text-xs ${callState === "answered" ? "text-emerald-500" : "text-muted-foreground"}`}>
-            {callState === "answered"
-              ? `SOS sent successfully — location & journey shared with ${guardian.name}.`
-              : `Dialing ${guardian.name} · SOS will be delivered as soon as the call is picked up…`}
-          </p>
-        )}
       </Reveal>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.6fr_1fr]">
-        <Reveal><SafetyMap emergency={active} /></Reveal>
+        {/* Live map */}
+        <Reveal>
+          <div className="overflow-hidden rounded-3xl border border-border/70">
+            <div className="flex items-center justify-between border-b border-border/70 bg-surface/80 px-5 py-3.5 backdrop-blur">
+              <p className="label-mono flex items-center gap-2"><MapPinned className="size-3.5 text-red-500" /> Live location</p>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] uppercase text-emerald-500">
+                <Radio className="size-3 animate-pulse" /> streaming
+              </span>
+            </div>
+            <div className="bg-surface">
+              <SafetyMap emergency={active} />
+            </div>
+          </div>
+        </Reveal>
 
         <div className="space-y-6">
           {/* Active journey */}
           <Reveal delay={80}>
             <div className={card}>
-              <p className="label-mono">Active journey</p>
-              <dl className="mt-4 space-y-2 text-sm">
-                {([
-                  ["From", JOURNEY.from],
-                  ["To", JOURNEY.to],
-                  ["Started", JOURNEY.started],
-                  ["Transport", JOURNEY.transport],
-                  ["Expected arrival", JOURNEY.eta],
-                ] as const).map(([k, v]) => (
-                  <div key={k} className="flex justify-between gap-4 font-mono text-xs">
-                    <dt className="text-muted-foreground">{k}</dt><dd className="text-right">{v}</dd>
+              <div className="flex items-center justify-between">
+                <p className="label-mono">Active journey</p>
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] uppercase text-emerald-500">{JOURNEY.status}</span>
+              </div>
+
+              <div className="mt-5 flex items-stretch gap-4">
+                <div className="flex flex-col items-center pt-1.5">
+                  <span className="size-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                  <span className="my-1 w-px flex-1 bg-gradient-to-b from-emerald-500/70 via-border to-red-500/70" />
+                  <span className="size-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]" />
+                </div>
+                <div className="flex-1 space-y-5">
+                  <div>
+                    <p className="font-mono text-[11px] uppercase text-foreground/70">From</p>
+                    <p className="mt-0.5 font-display text-xl uppercase leading-tight">{JOURNEY.from}</p>
+                    <p className="font-mono text-[11px] text-foreground/70">Departed {JOURNEY.started}</p>
                   </div>
-                ))}
-                <div className="flex justify-between font-mono text-xs"><dt className="text-muted-foreground">Status</dt><dd className="text-emerald-500">{JOURNEY.status}</dd></div>
-              </dl>
-              <p className="mt-4 border-t border-border/60 pt-3 font-mono text-[10px] uppercase text-muted-foreground">
-                Driver: {JOURNEY.driver} · {JOURNEY.vehicle} · {JOURNEY.plate}
-              </p>
+                  <div>
+                    <p className="font-mono text-[11px] uppercase text-foreground/70">To</p>
+                    <p className="mt-0.5 font-display text-xl uppercase leading-tight">{JOURNEY.to}</p>
+                    <p className="font-mono text-[11px] text-foreground/70">Expected {JOURNEY.eta}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-mono text-[11px] uppercase text-foreground/70">ETA</p>
+                  <p className="font-display text-4xl leading-none text-emerald-500">{JOURNEY.minsAway}<span className="text-sm"> min</span></p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/60 pt-4 font-mono text-center text-[11px] uppercase">
+                <div><p className="text-foreground/70">Transport</p><p className="mt-1 text-sm text-foreground">{JOURNEY.transport}</p></div>
+                <div><p className="text-foreground/70">Driver</p><p className="mt-1 text-sm text-foreground">{JOURNEY.driver}</p></div>
+                <div><p className="text-foreground/70">Vehicle</p><p className="mt-1 text-sm text-foreground">{JOURNEY.plate}</p></div>
+              </div>
             </div>
           </Reveal>
 
           {/* Contact */}
           <Reveal delay={140}>
             <div className={card}>
-              <p className="label-mono">Contact · {guardian.name}</p>
-              <div className="mt-4 grid grid-cols-3 gap-2">
+              <p className="label-mono">Quick contact</p>
+              <div className="mt-4 grid grid-cols-3 gap-3">
                 {[
-                  { icon: Phone, label: "Call" },
-                  { icon: MessageCircle, label: "Message" },
-                  { icon: Video, label: "Video" },
-                ].map(({ icon: Icon, label }) => (
-                  <Button key={label} size="sm" variant="outline" className="rounded-xl font-mono text-[10px]">
-                    <Icon className="size-3" /> {label}
-                  </Button>
+                  { icon: Phone, label: "Call", tint: "hover:border-red-500/50 hover:text-red-500" },
+                  { icon: MessageCircle, label: "Message", tint: "hover:border-emerald-500/50 hover:text-emerald-500" },
+                  { icon: Video, label: "Video", tint: "hover:border-sky-500/50 hover:text-sky-500" },
+                ].map(({ icon: Icon, label, tint }) => (
+                  <button key={label} type="button" className={`flex flex-col items-center gap-2.5 rounded-2xl border border-border/60 bg-background/40 py-5 transition-all hover:-translate-y-0.5 ${tint}`}>
+                    <span className="grid size-10 place-items-center rounded-full bg-foreground/5"><Icon className="size-4" /></span>
+                    <span className="font-mono text-[11px] uppercase tracking-widest">{label}</span>
+                  </button>
                 ))}
               </div>
+              <p className="mt-4 text-center font-mono text-[11px] uppercase text-foreground/70">Calling priority 1 · {guardian.name}</p>
             </div>
           </Reveal>
         </div>
@@ -244,12 +364,16 @@ export function GuardianDashboard() {
         <Reveal delay={60}>
           <div className={card}>
             <p className="label-mono flex items-center gap-2"><Activity className="size-3" /> SOS timeline</p>
-            <ol className="mt-4 space-y-3">
+            <ol className="relative mt-5 space-y-5 pl-1">
+              <span className="absolute top-1 bottom-1 left-[7px] w-px bg-gradient-to-b from-red-500 via-amber-500/70 to-emerald-500" />
               {TIMELINE.map((t, i) => (
-                <li key={t} className="flex items-center gap-3 text-sm">
-                  <span className="grid size-6 place-items-center rounded-full bg-foreground/5 font-mono text-[10px]">{i + 1}</span>
-                  <Clock className="size-3 text-muted-foreground" />
-                  {t}
+                <li key={t.text} className="relative flex items-start gap-4 pl-6">
+                  <span className={`absolute left-0 top-1.5 size-[15px] rounded-full border-4 border-background ${toneMap[t.tone]} shadow-[0_0_10px_rgba(0,0,0,0.4)]`} />
+                  <div className="flex flex-1 items-center justify-between gap-3">
+                    <p className="text-sm font-medium">{t.text}</p>
+                    <span className="font-mono text-[11px] text-foreground/70">{t.at}</span>
+                  </div>
+                  {i === TIMELINE.length - 1 && <ChevronRight className="size-4 text-emerald-500" />}
                 </li>
               ))}
             </ol>
@@ -260,28 +384,43 @@ export function GuardianDashboard() {
         <Reveal delay={120}>
           <div className={card}>
             <p className="label-mono">Safety alerts</p>
-            <ul className="mt-4 space-y-4">
+            <ul className="mt-5 space-y-4">
               {ALERTS.map((a) => (
-                <li key={a.title} className="flex items-start gap-3">
-                  <span className="mt-0.5 grid size-8 place-items-center rounded-xl bg-amber-500/10"><AlertTriangle className="size-4 text-amber-500" /></span>
+                <li key={a.title} className="flex items-start gap-3.5 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 transition-colors hover:border-amber-500/40">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-amber-500/15"><AlertTriangle className="size-4 text-amber-500" /></span>
                   <div>
-                    <p className="text-sm font-semibold">{a.title} <span className="ml-2 font-mono text-[10px] font-normal text-muted-foreground">{a.at}</span></p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{a.detail}</p>
+                    <p className="text-sm font-semibold">{a.title} <span className="ml-2 font-mono text-[11px] font-normal text-foreground/70">{a.at}</span></p>
+                    <p className="mt-1 text-xs text-foreground/70">{a.detail}</p>
                   </div>
                 </li>
               ))}
             </ul>
+            <div className="mt-5 rounded-2xl border border-red-500/30 bg-red-950/20 p-4">
+              <p className="flex items-center gap-2 font-display text-xl uppercase text-red-500"><Siren className="size-4" /> Emergency panel</p>
+              <p className="mt-1.5 font-mono text-xs text-foreground/70">
+                Location: {sos?.location ? `${sos.location.lat.toFixed(2)}, ${sos.location.lng.toFixed(2)}` : "19.31, 84.79"} · Activated: {at ?? "10:21 PM"}
+              </p>
+              <div className="mt-3.5 flex gap-2">
+                <Button size="sm" variant="destructive" className="rounded-full"><Phone className="mr-1 size-3" /> Call {guardian.name}</Button>
+                <Button size="sm" variant="outline" className="rounded-full">View location</Button>
+              </div>
+            </div>
           </div>
         </Reveal>
       </div>
 
       {/* Acknowledgement */}
       <Reveal delay={160}>
-        <div className="mt-6 rounded-2xl border border-amber-500/40 bg-amber-950/10 p-6">
-          <p className="font-display text-2xl uppercase">⚠ Safety alert</p>
-          <p className="mt-2 text-sm text-muted-foreground">A possible safety issue was detected during Priya's journey. · 10:18 PM</p>
-          <div className="mt-5 flex gap-2">
-            <Button size="sm" className="rounded-full">Acknowledge</Button>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-5 rounded-3xl border border-amber-500/40 bg-[linear-gradient(120deg,rgba(146,64,14,0.25),rgba(69,26,3,0.12))] p-6 backdrop-blur">
+          <div className="flex items-start gap-4">
+            <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-amber-500/15"><AlertTriangle className="size-5 text-amber-500" /></span>
+            <div>
+              <p className="font-display text-2xl uppercase leading-none">⚠ Safety alert</p>
+              <p className="mt-2 text-sm text-amber-100/70">A possible safety issue was detected during Priya's journey. · 10:18 PM</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" className="rounded-full bg-amber-500 text-black hover:bg-amber-400"><CheckCircle2 className="mr-1.5 size-3.5" /> Acknowledge</Button>
             <Button size="sm" variant="outline" className="rounded-full">View map</Button>
           </div>
         </div>
@@ -289,13 +428,13 @@ export function GuardianDashboard() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
         <Reveal>
-          <div className={card}>
+          <div className={`${card} h-full`}>
             <p className="label-mono flex items-center gap-2"><Bell className="size-3" /> Notifications</p>
-            <ul className="mt-4 space-y-3 text-sm">
+            <ul className="mt-5 space-y-3.5 text-sm">
               {NOTIFICATIONS.map((n) => (
-                <li key={n.text} className="flex items-start gap-2.5">
+                <li key={n.text} className="flex items-start gap-3 rounded-xl px-2 -mx-2 py-1.5 transition-colors hover:bg-foreground/[0.03]">
                   <span className={`mt-1.5 size-2 shrink-0 rounded-full ${n.dot}`} />
-                  <span><span className="font-semibold">{n.text}</span> <span className="font-mono text-[10px] text-muted-foreground">· {n.at}</span></span>
+                  <span><span className="font-semibold">{n.text}</span> <span className="font-mono text-[11px] text-foreground/70">· {n.at}</span></span>
                 </li>
               ))}
             </ul>
@@ -303,13 +442,13 @@ export function GuardianDashboard() {
         </Reveal>
 
         <Reveal delay={80}>
-          <div className={card}>
+          <div className={`${card} h-full`}>
             <p className="label-mono">Recent journeys</p>
-            <ul className="mt-4 space-y-4">
+            <ul className="mt-5 space-y-3">
               {JOURNEYS.map((j) => (
-                <li key={j.route} className="flex items-center justify-between text-sm">
-                  <div><p className="font-medium">{j.route}</p><p className="font-mono text-[10px] text-muted-foreground">{j.time}</p></div>
-                  <CheckCircle2 className="size-4 text-emerald-500" />
+                <li key={j.route} className="group flex items-center justify-between rounded-xl border border-border/50 bg-background/30 px-4 py-3 transition-all hover:border-emerald-500/40">
+                  <div><p className="text-sm font-medium">{j.route}</p><p className="font-mono text-[11px] text-foreground/70">{j.time}</p></div>
+                  <span className="grid size-8 place-items-center rounded-full bg-emerald-500/10 transition-transform group-hover:scale-110"><CheckCircle2 className="size-4 text-emerald-500" /></span>
                 </li>
               ))}
             </ul>
@@ -317,15 +456,15 @@ export function GuardianDashboard() {
         </Reveal>
 
         <Reveal delay={140}>
-          <div className={card}>
-            <p className="label-mono">Notification settings</p>
-            <ul className="mt-4 space-y-2.5 text-sm">
+          <div className={`${card} h-full`}>
+            <p className="label-mono flex items-center gap-2"><Gauge className="size-3" /> Notification settings</p>
+            <ul className="mt-5 space-y-3 text-sm">
               {SETTINGS.map((s) => (
                 <li key={s} className="flex items-center justify-between">
                   <span>{s}</span>
-                  <label className="relative inline-flex h-5 w-9 cursor-pointer items-center rounded-full bg-foreground/15 transition-colors has-[:checked]:bg-emerald-500">
+                  <label className="relative inline-flex h-6 w-11 cursor-pointer items-center rounded-full bg-foreground/15 transition-colors has-[:checked]:bg-emerald-500">
                     <input type="checkbox" defaultChecked aria-label={s} className="peer sr-only" />
-                    <span className="size-4 translate-x-0.5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-[18px]" />
+                    <span className="size-5 translate-x-0.5 rounded-full bg-background shadow transition-transform peer-checked:translate-x-[22px]" />
                   </label>
                 </li>
               ))}

@@ -214,14 +214,14 @@ export function SafetyMap({
           />
         )}
 
-        <div className="pointer-events-none absolute left-4 top-4 z-[1000] flex items-center gap-2 border border-border bg-background px-3 py-2 font-mono text-[10px] uppercase text-foreground shadow-sm">
+        <div className="pointer-events-none absolute left-4 top-4 z-[1000] flex items-center gap-2 border border-border bg-background px-3 py-2 font-mono text-[11px] uppercase text-foreground shadow-sm">
           <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
           {emergency ? "SOS PREVIEW / LIVE TRACKING" : crime ? "CRIME MAP · 5S AUTO-LOCATION" : "5S AUTO-LOCATION ACTIVE"}
         </div>
 
         {crime && (
           <div className="pointer-events-none absolute inset-0 z-[1000]">
-            <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-2 border border-red-500/40 bg-background/90 px-2.5 py-1.5 font-mono text-[10px] uppercase text-muted-foreground">
+            <div className="pointer-events-none absolute right-3 bottom-3 flex items-center gap-2 border border-red-500/40 bg-background/90 px-2.5 py-1.5 font-mono text-[11px] uppercase text-foreground/70">
               <span className="size-3 rounded-full bg-[hsl(0_74%_55%_/_0.3)]" />
               Low
               <span className="size-3 rounded-full bg-[hsl(0_74%_38%_/_0.65)]" />
@@ -237,7 +237,7 @@ export function SafetyMap({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-display text-2xl uppercase leading-none text-red-600">{selectedCrime.area}</p>
-                      <p className="mt-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      <p className="mt-1.5 font-mono text-[11px] uppercase tracking-widest text-foreground/70">
                         {city ? `${city.city}, ${city.state}` : "Bhubaneswar, Odisha"} · NCRB Crime in India 2024
                       </p>
                     </div>
@@ -254,28 +254,28 @@ export function SafetyMap({
                   <div className="mt-3 grid grid-cols-3 gap-2 text-center font-mono">
                     <div className="rounded-xl bg-red-500/10 py-2">
                       <p className="text-lg leading-none font-bold text-red-600">{selectedCrime.cases}</p>
-                      <p className="mt-1 text-[9px] uppercase text-muted-foreground">Cases</p>
+                      <p className="mt-1 text-[11px] uppercase text-foreground/70">Cases</p>
                     </div>
                     <div className="rounded-xl bg-red-500/10 py-2">
                       <p className="text-lg leading-none font-bold text-red-600">{selectedCrime.severity}/5</p>
-                      <p className="mt-1 text-[9px] uppercase text-muted-foreground">Severity</p>
+                      <p className="mt-1 text-[11px] uppercase text-foreground/70">Severity</p>
                     </div>
                     <div className="rounded-xl bg-red-500/10 py-2">
                       <p className="text-lg leading-none font-bold text-red-600">{city ? city.crimeRate.toFixed(0) : "-"}</p>
-                      <p className="mt-1 text-[9px] uppercase text-muted-foreground">Rate /1L</p>
+                      <p className="mt-1 text-[11px] uppercase text-foreground/70">Rate /1L</p>
                     </div>
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-1.5">
                     {selectedCrime.categories.map((c) => (
-                      <span key={c} className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 font-mono text-[10px] uppercase text-red-600">
+                      <span key={c} className="rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 font-mono text-[11px] uppercase text-red-600">
                         {c}
                       </span>
                     ))}
                   </div>
 
                   {city && (
-                    <p className="mt-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                    <p className="mt-3 font-mono text-[11px] leading-relaxed text-foreground/70">
                       {city.city} 2024: IPC {city.ipc.toLocaleString("en-IN")} · BNS {city.bns.toLocaleString("en-IN")} · Total cognizable {city.total.toLocaleString("en-IN")} ·
                       Crime rate {city.crimeRate}/1L · Charge-sheeting {city.chargeSheetingRate}% · Population {city.populationLakh}L
                     </p>
@@ -297,7 +297,7 @@ export function SafetyMap({
             <p className="label-mono flex items-center gap-2">
               <MapPin className="size-3" /> {position ? "Live GPS Coordinates" : "Default Location"}
             </p>
-            <span className="inline-flex items-center gap-1 font-mono text-[10px] uppercase text-emerald-600 font-bold animate-pulse">
+            <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase text-emerald-600 font-bold animate-pulse">
               <Radio className="size-3" /> Auto 5s Sync
             </span>
           </div>
@@ -309,7 +309,7 @@ export function SafetyMap({
           <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold">
             <MapPin className="size-3.5 shrink-0" /> {placeName}
           </p>
-          <p className="mt-3 text-sm text-muted-foreground">
+          <p className="mt-3 text-sm text-foreground/70">
             {message} {position?.accuracy ? `Accuracy: ±${Math.round(position.accuracy)} m.` : ""}
           </p>
 
@@ -320,7 +320,7 @@ export function SafetyMap({
           {crime && (
             <div role="status" className="mt-6 border-l-2 border-red-600 bg-red-950/20 p-4">
               <p className="font-display text-2xl uppercase text-red-500">Crime density layer</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 text-sm text-foreground/70">
                 {densityNote}. Click any red circle for NCRB crime details of that area. Red circles move with the map as you pan or zoom.
               </p>
             </div>
@@ -329,7 +329,7 @@ export function SafetyMap({
           {emergency && (
             <div role="status" className="mt-6 border-l-2 border-red-600 bg-red-950/20 p-4">
               <p className="font-display text-2xl uppercase text-red-500">Find a safer place</p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-2 text-sm text-foreground/70">
                 Move away from immediate danger if you can. Contact local emergency services. A map cannot verify that a path is safe.
               </p>
             </div>
@@ -353,7 +353,7 @@ export function SafetyMap({
               </a>
             </Button>
           ) : (
-            <p className="mt-3 text-xs text-muted-foreground">
+            <p className="mt-3 text-xs text-foreground/70">
               Enter a destination to calculate escape routes.
             </p>
           )}
