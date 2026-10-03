@@ -2,7 +2,7 @@ import type { GeoPoint } from "@/lib/api";
 
 export type { GeoPoint };
 
-export const HYDERABAD: GeoPoint = { lat: 17.385, lng: 78.4867, address: "Hyderabad" };
+export const DEFAULT_LOCATION: GeoPoint = { lat: 22.443624, lng: 88.415778, address: "Sonarpur-Kamalgazi Road, Shimultala, Rajpur Sonarpur - 700150, West Bengal, India" };
 
 export function formatKm(meters?: number) {
   if (!Number.isFinite(meters)) return "—";
@@ -39,20 +39,17 @@ export async function geocode(query: string): Promise<GeoPoint | null> {
 export function readBrowserLocation(): Promise<GeoPoint> {
   return new Promise((resolve) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
-      resolve({ ...HYDERABAD });
+      resolve({ ...DEFAULT_LOCATION });
       return;
     }
-    const timer = setTimeout(() => resolve({ ...HYDERABAD }), 800);
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
-        clearTimeout(timer);
         resolve({ lat: coords.latitude, lng: coords.longitude, accuracy: coords.accuracy });
       },
       () => {
-        clearTimeout(timer);
-        resolve({ ...HYDERABAD });
+        resolve({ ...DEFAULT_LOCATION });
       },
-      { enableHighAccuracy: false, timeout: 800 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
   });
 }
@@ -78,10 +75,10 @@ export function project(
 export function boundsFor(points: GeoPoint[], pad = 0.012) {
   if (!points.length) {
     return {
-      minLat: HYDERABAD.lat - pad,
-      maxLat: HYDERABAD.lat + pad,
-      minLng: HYDERABAD.lng - pad,
-      maxLng: HYDERABAD.lng + pad,
+      minLat: DEFAULT_LOCATION.lat - pad,
+      maxLat: DEFAULT_LOCATION.lat + pad,
+      minLng: DEFAULT_LOCATION.lng - pad,
+      maxLng: DEFAULT_LOCATION.lng + pad,
     };
   }
   const lats = points.map((p) => p.lat);

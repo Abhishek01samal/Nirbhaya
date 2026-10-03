@@ -221,6 +221,14 @@ export const responderApi = {
   nearby: () => api<{ responders?: Array<{ id: string; name: string; phone: string; status: string }> } | Array<{ id: string; name: string; phone: string; status: string }>>("/responders/nearby"),
 };
 
+export const voiceApi = {
+  analyze: (transcription: string) =>
+    api<{ threatLevel: number; sosTriggered: boolean }>("/voice/analyze", {
+      method: "POST",
+      body: JSON.stringify({ transcription }),
+    }),
+};
+
 export const assistantApi = {
   chat: (sessionId: string, message: string) =>
     api<{ reply: string; sessionId: string }>("/assistant/chat", {

@@ -10,7 +10,7 @@ import { VoiceRecording, SESSION_TYPES } from "./voiceRecording.model.js";
 import { isDbConnected } from "../../config/db.js";
 import { emitSafetyEvent } from "../../utils/safetyEventBus.js";
 
-const THREAT_THRESHOLD = 50;
+const THREAT_THRESHOLD = 40;
 const MAX_TRANSCRIPTION_LENGTH = 5000;
 
 function badRequest(res, code, message) {

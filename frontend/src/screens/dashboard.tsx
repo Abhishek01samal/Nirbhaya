@@ -7,11 +7,13 @@ import { Page, Section, Tag } from "@/components/site/shell";
 import { SafetyMap } from "@/components/site/safety-map";
 import { EcgMonitor } from "@/components/site/ecg";
 import { LiveMic } from "@/components/site/live-mic";
+import { NearbyPlaces } from "@/components/site/nearby-places";
 import { Reveal } from "@/components/site/motion";
 import { Button } from "@/components/ui/button";
 import { guardians, vitals } from "@/lib/mock-data";
 import { analyzeSpeech } from "@/lib/threat";
 import { useSos } from "@/lib/sos-store";
+import { voiceApi } from "@/lib/api";
 
 const risk = Math.min(100, Math.round((78 / 180) * 30 + (2.4 / 10) * 30 + (38 / 120) * 20 + (4.2 / 10) * 20));
 
@@ -43,7 +45,11 @@ export function Dashboard() {
   const [tick, setTick] = useState(0);
   const [log, setLog] = useState<{ t: string; msg: string }[]>([]);
   const [transcript, setTranscript] = useState<{ original: string; english: string } | null>(null);
+  const [transcribing, setTranscribing] = useState(false);
+  const [sosWarning, setSosWarning] = useState(false);
+  const [warningCountdown, setWarningCountdown] = useState(60);
   const logged = useRef(new Set<number>());
+  const transcriptRef = useRef<{ original: string; english: string } | null>(null);
 
   useEffect(() => {
     const id = window.setInterval(() => setJitter([Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5]), 1500);
@@ -64,8 +70,6 @@ export function Dashboard() {
     return () => window.clearInterval(id);
   }, [sos]);
 
-  // Live speech wins over the preset script: the English translation is what
-  // analyzeSpeech can actually read, since its keywords are English-only.
   const spoken = transcript?.english.trim() ?? "";
   const analysis = useMemo(() => analyzeSpeech(spoken || script), [spoken, script]);
   const escalate = trigger !== "offline" || analysis.confidence > 50;
@@ -82,7 +86,7 @@ export function Dashboard() {
     [2, `Trigger fired: ${TRIGGERS.find((x) => x.id === trigger)!.label}`],
     [10, "Location agent locked GPS ± 7 m"],
     [20, "Voice recording started (consent on file) — incident SP-" + new Date().getDate() + "0927"],
-    [45, `Transcript ready: “${spoken || script}”`],
+    [45, `Transcript ready: "${spoken || script}"`],
     [55, `Threat agent confidence ${analysis.confidence}% — ${analysis.category}`],
     [65, analysis.category === "No emergency" ? "False-alarm prevention: context indicates no emergency, SOS stood down" : `Guardian agent notifying ${guardians[0]!.name} (priority 1)`],
     [78, analysis.category === "No emergency" ? "Monitoring resumed" : `Emergency agent routing to ${analysis.services.join(", ")}`],
@@ -98,14 +102,55 @@ export function Dashboard() {
     });
   }, [tick, events]);
 
-  // Each completed phrase is logged as it lands, outside the tick sequence.
   const micRef = useRef<((r: { original: string; english: string }) => void) | null>(null);
   useEffect(() => {
     micRef.current = (r) => {
       setTranscript(r);
-      setLog((l) => [{ t: new Date().toLocaleTimeString("en-GB"), msg: `Speech captured: “${r.english}”` }, ...l]);
+      setLog((l) => [{ t: new Date().toLocaleTimeString("en-GB"), msg: `Speech captured: "${r.english}"` }, ...l]);
     };
   }, []);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
+  useEffect(() => {
+    if (!transcribing || sosWarning) return;
+    const id = window.setInterval(async () => {
+      const text = transcriptRef.current?.english.trim();
+      if (!text) return;
+      try {
+        const result = await voiceApi.analyze(text);
+        if (result.sosTriggered) {
+          setSosWarning(true);
+          setWarningCountdown(60);
+        }
+      } catch {
+        // silently fail
+      }
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [transcribing, sosWarning]);
+
+  useEffect(() => {
+    if (!sosWarning) return;
+    const id = window.setInterval(() => {
+      setWarningCountdown((c) => {
+        if (c <= 1) {
+          triggerSos({ triggerType: "VOICE_DANGER", reason: "Voice threat detected - auto triggered after 60s warning" });
+          setSosWarning(false);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [sosWarning]);
+
+  const handleWarningOff = () => {
+    setSosWarning(false);
+    setWarningCountdown(60);
+  };
 
   const start = () => { logged.current.clear(); setLog([]); setTick(0); setRunning(true); triggerSos(); };
   const reset = () => { setRunning(false); standDown(); setTick(0); setLog([]); setTranscript(null); logged.current.clear(); };
@@ -115,6 +160,8 @@ export function Dashboard() {
   const mapBlock = <SafetyMap emergency={sos} featured={sos} crime />;
 
   return <Page>
+    {sosWarning && <div className="fixed inset-0 z-30 bg-blue-500/20 pointer-events-none" />}
+
     {sos && (
       <div className="sticky top-16 z-40 flex flex-wrap items-center justify-between gap-4 border-b-2 border-red-600 bg-red-950/90 px-6 py-4 text-red-100 shadow-2xl backdrop-blur-md">
         <div className="flex items-center gap-3">
@@ -122,7 +169,7 @@ export function Dashboard() {
             <Siren className="size-3 text-white" />
           </span>
           <span className="font-mono text-sm uppercase tracking-widest font-bold text-red-300">
-            🚨 EMERGENCY ALERT ACTIVE — EMERGENCY ORCHESTRATION ENGAGED
+            EMERGENCY ALERT ACTIVE — EMERGENCY ORCHESTRATION ENGAGED
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -146,31 +193,80 @@ export function Dashboard() {
       </div>
     )}
 
-    <div className={`border-b transition-colors duration-500 ${sos ? "border-red-800 bg-red-950/40" : "border-border-strong bg-surface"}`}>
+    {sosWarning && (
+      <div className="sticky top-16 z-40 flex flex-wrap items-center justify-between gap-4 border-b-2 border-blue-600 bg-blue-950/90 px-6 py-4 text-blue-100 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <span className="flex size-4 items-center justify-center rounded-full bg-blue-600 animate-ping">
+            <ShieldAlert className="size-3 text-white" />
+          </span>
+          <span className="font-mono text-sm uppercase tracking-widest font-bold text-blue-300">
+            SOS WARNING — TRIGGERING IN {warningCountdown}s
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleWarningOff}
+            className="border-blue-500/50 bg-blue-900/50 font-mono text-xs uppercase hover:bg-blue-900 text-blue-200"
+          >
+            <RotateCcw className="mr-1 size-3.5" /> Turn Off SOS
+          </Button>
+        </div>
+      </div>
+    )}
+
+    <div className={`border-b transition-colors duration-500 ${sos ? "border-red-800 bg-red-950/40" : sosWarning ? "border-blue-800 bg-blue-950/40" : "border-border-strong bg-surface"}`}>
       <div className="mx-auto flex max-w-[1600px] flex-col justify-between gap-5 px-4 py-7 md:flex-row md:items-end md:px-8 md:py-9">
         <div>
           <p className="label-mono flex items-center gap-2">
-            <span className={`size-2 rounded-full ${sos ? "bg-red-500 animate-pulse" : "bg-foreground"}`} />
+            <span className={`size-2 rounded-full ${sos ? "bg-red-500 animate-pulse" : sosWarning ? "bg-blue-500 animate-pulse" : "bg-foreground"}`} />
             Nirbhaya / Personal safety
           </p>
-          <h1 className={`mt-2 font-display text-5xl uppercase leading-none md:text-7xl transition-colors ${sos ? "text-red-500" : ""}`}>
-            Safety dashboard<span className={sos ? "text-red-400" : "text-muted-foreground"}>.</span>
+          <h1 className={`mt-2 font-display text-5xl uppercase leading-none md:text-7xl transition-colors ${sos ? "text-red-500" : sosWarning ? "text-blue-500" : ""}`}>
+            Safety dashboard<span className={sos || sosWarning ? "text-blue-400" : "text-muted-foreground"}>.</span>
           </h1>
           <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-            {sos ? "CRITICAL ALERT: Emergency response system activated. Live sensors and location telemetry streaming to guardians." : "A live view of your safety signals, location and emergency response orchestration."}
+            {sos ? "CRITICAL ALERT: Emergency response system activated. Live sensors and location telemetry streaming to guardians." : sosWarning ? "WARNING: Potential threat detected. SOS will trigger in 60 seconds unless manually turned off." : "A live view of your safety signals, location and emergency response orchestration."}
           </p>
         </div>
-        <div className={`flex items-center gap-3 self-start border px-4 py-3 font-mono text-xs uppercase md:self-auto transition-all ${sos ? "border-red-600 bg-red-900/60 text-red-200 shadow-lg shadow-red-950/50 animate-pulse" : "border-border"}`}>
-          <span className={`size-2 ${sos ? "animate-ping bg-red-500" : "bg-muted-foreground"}`} />
-          {sos ? `EMERGENCY ACTIVE — PROGRESS ${overall}%` : "Monitoring active"}
+        <div className={`flex items-center gap-3 self-start border px-4 py-3 font-mono text-xs uppercase md:self-auto transition-all ${sos ? "border-red-600 bg-red-900/60 text-red-200 shadow-lg shadow-red-950/50 animate-pulse" : sosWarning ? "border-blue-600 bg-blue-900/60 text-blue-200 shadow-lg shadow-blue-950/50 animate-pulse" : "border-border"}`}>
+          <span className={`size-2 ${sos ? "animate-ping bg-red-500" : sosWarning ? "animate-ping bg-blue-500" : "bg-muted-foreground"}`} />
+          {sos ? `EMERGENCY ACTIVE — PROGRESS ${overall}%` : sosWarning ? `SOS WARNING — ${warningCountdown}s` : "Monitoring active"}
         </div>
       </div>
-      <div className="h-1 bg-muted"><div className={`h-full transition-all duration-300 ${sos ? "bg-red-600" : "bg-foreground"}`} style={{ width: `${sos ? overall : 0}%` }} /></div>
+      <div className="h-1 bg-muted"><div className={`h-full transition-all duration-300 ${sos ? "bg-red-600" : sosWarning ? "bg-blue-600" : "bg-foreground"}`} style={{ width: `${sos ? overall : 0}%` }} /></div>
     </div>
 
-    {sos && <Section title="Emergency location" note="Choose a known safe destination">
+    <Section title="Location map" note="Always available">
       {mapBlock}
-    </Section>}
+    </Section>
+
+    <Section title="Nearby places" note="Within 2km radius">
+      <NearbyPlaces sosActive={sos} />
+    </Section>
+
+    <Section title="Live transcription" note={transcribing ? "Sending to backend every 5s" : "Toggle to enable backend threat detection"}>
+      <div className="grid gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setTranscribing(!transcribing)}
+            variant={transcribing ? "default" : "outline"}
+            className="font-mono text-xs uppercase"
+          >
+            {transcribing ? <Mic className="mr-2 size-4" /> : <Mic className="mr-2 size-4" />}
+            {transcribing ? "Stop Live Transcribing" : "Start Live Transcribing"}
+          </Button>
+          {transcribing && (
+            <span className="flex items-center gap-2 font-mono text-[10px] uppercase text-muted-foreground">
+              <span className="size-2 rounded-full bg-green-500 animate-pulse" />
+              Transcribing — sends to backend every 30s
+            </span>
+          )}
+        </div>
+        <LiveMic active={transcribing} onFinal={onMicResult} />
+      </div>
+    </Section>
 
     <Section title="Your safety status" note={sos ? "SOS simulation active" : "Sensor preview"}>
       {sos ? (
@@ -178,7 +274,6 @@ export function Dashboard() {
           <RiskCard sos={sos} onToggle={reset} />
           <VitalsGrid jitter={jitter} sos={sos} wide />
           <EcgMonitor />
-          <LiveMic active={sos} onFinal={onMicResult} />
         </div>
       ) : (
         <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)_300px]">
@@ -188,10 +283,6 @@ export function Dashboard() {
         </div>
       )}
     </Section>
-
-    {!sos && <Section title="Location map" note="Always available">
-      {mapBlock}
-    </Section>}
 
     <Section title="Trigger mechanisms" note="Configurable thresholds">
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr_1.2fr]">

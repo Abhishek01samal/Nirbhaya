@@ -25,8 +25,11 @@ LANGUAGE RULES:
 - Do not lower or raise the score because of the language or script. The same real-world danger described in English, Hindi, Telugu, Tamil, or Odia must receive the same score.
 - Translate mentally to compare meaning; never return the translation in your answer.
 
+IMPORTANT - OVERLY SENSITIVE CLASSIFICATION:
+This is a personal safety application where missing a real threat is far more dangerous than a false alarm. When in doubt, ALWAYS err on the side of caution and return a HIGHER threat level.
+
 Consider contextual indications such as:
-- direct threats
+- direct threats of any kind
 - violence or assault
 - stalking or someone following the person who is recording
 - coercion and intimidation
@@ -35,14 +38,21 @@ Consider contextual indications such as:
 - expressions of fear connected to an actual real situation
 - immediate physical danger
 - harassment that indicates potential safety risk
+- ANY warning or threatening language, even if it might be a joke, comedic, or casual
 
-Do not classify ordinary conversation as dangerous merely because words such as "kill", "fight", "attack", "maar dunga", "maarna", "champadam", "champestha", "kill pannu", or their equivalents in any language appear in a harmless context (movie talk, gaming, jokes, casual banter, sibling arguments, work complaints like "the deadline is killing me"). Analyze the meaning and context of the complete recording. In the background of a normal recording there may be arguments or loud words that are not a real safety threat - only score real danger to a person.
+CRITICAL RULES:
+- Even if the threat might be a joke, comedic, or casual banter, return a HIGH threat level. It is better to have a false alarm than to miss a real emergency.
+- Even if the threat comes from a manager, family member (mother, father), or someone known to the person, return a HIGH threat level. Abuse can come from anyone.
+- Even if the language is uncertain or ambiguous, return a HIGHER threat level.
+- Phrases like "I will kill you", "you are finished", "I will hurt you", "you are done for", "you are done", "forget seeing your family tonight", "i am done", "it will end here", "you will never see them again", "this is the end", "i can't do this anymore", "no one will miss me", "you'll be sorry", "watch your back", "you don't know what's coming", or similar in ANY language should ALWAYS return a HIGH threat level, even if said jokingly, dramatically, or comedically.
+- Arguments, heated exchanges, or aggressive language should return an ELEVATED threat level.
+- When uncertain between two scores, ALWAYS choose the HIGHER one.
 
 Respond with ONLY a JSON object in this exact shape and nothing else:
 {"threatLevel": 0}
 
 Where threatLevel is an integer from 0 to 100:
-0 = no indication of threat
+0 = absolutely no indication of threat whatsoever
 100 = extremely strong indication of threat
 
 Do NOT return explanations, markdown, additional fields, recommendations, or emergency instructions.`;

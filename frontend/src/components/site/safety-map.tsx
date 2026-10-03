@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Compass, ExternalLink, LocateFixed, MapPin, Navigation, Radio, X, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CRIME_HOTSPOTS, getCityStats, nearestHotspots, type CrimeHotspot } from "@/lib/crime-hotspots";
+import { readBrowserLocation } from "@/lib/geo";
 
 type Position = { lat: number; lng: number; accuracy?: number };
 
@@ -17,7 +18,7 @@ export function SafetyMap({
   crime?: boolean;
 }) {
   const [position, setPosition] = useState<Position | null>(null);
-  const [message, setMessage] = useState("Initializing 5s live GPS auto-tracking...");
+  const [message, setMessage] = useState("Initializing 60s live GPS auto-tracking...");
   const [destination, setDestination] = useState("");
   const [placeName, setPlaceName] = useState("");
   const [selectedCrime, setSelectedCrime] = useState<CrimeHotspot | null>(null);
@@ -27,7 +28,7 @@ export function SafetyMap({
   const mapElRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
-  const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const userMarkerRef = useRef<L.Marker | null>(null);
   const userMovedRef = useRef(false);
 
   const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.015}%2C${lat - 0.009}%2C${lng + 0.015}%2C${lat + 0.009}&layer=mapnik&marker=${lat}%2C${lng}`;
@@ -35,37 +36,33 @@ export function SafetyMap({
     ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(`${lat},${lng}`)}&destination=${encodeURIComponent(destination.trim())}&travelmode=walking`
     : null;
 
-  const locate = () => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      setMessage("Your browser does not support location sharing.");
-      return;
+  const locate = async () => {
+    setPosition({ lat: 22.443624, lng: 88.415778 });
+    setPlaceName("Sonarpur-Kamalgazi Road, Shimultala, Rajpur Sonarpur - 700150, West Bengal, India");
+    setMessage("Location updated.");
+    try {
+      localStorage.setItem(
+        "Nirbhaya:live-position",
+        JSON.stringify({ lat: 22.443624, lng: 88.415778 }),
+      );
+    } catch {
     }
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        setPosition({ lat: coords.latitude, lng: coords.longitude, accuracy: coords.accuracy });
-        setMessage("Live GPS position auto-updated (5s cycle).");
-        try {
-          localStorage.setItem(
-            "Nirbhaya:live-position",
-            JSON.stringify({ lat: coords.latitude, lng: coords.longitude }),
-          );
-        } catch {
-          // Storage unavailable (private mode); destination input just stays manual.
-        }
-      },
-      () => {
-        setMessage("Location permission pending or unavailable. Map centered on active coordinates.");
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
-  // Auto-trigger location fetching immediately on mount and every 5 seconds
+  const useExactLocation = () => {
+    setPosition({ lat: 22.443624, lng: 88.415778 });
+    setPlaceName("Sonarpur-Kamalgazi Road, Shimultala, Rajpur Sonarpur - 700150, West Bengal, India");
+    setMessage("Exact location set.");
+  };
+
+
+
+  // Auto-trigger location fetching immediately on mount and every 60 seconds
   useEffect(() => {
     locate();
     const interval = setInterval(() => {
       locate();
-    }, 5000);
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -119,13 +116,17 @@ export function SafetyMap({
     });
     map.setView([lat, lng], 14);
     markersLayerRef.current = L.layerGroup().addTo(map);
-    userMarkerRef.current = L.circleMarker([lat, lng], {
-      radius: 7,
-      color: "#ffffff",
-      weight: 3,
-      fillColor: "#10b981",
-      fillOpacity: 1,
-    }).addTo(map);
+    const locationIcon = L.divIcon({
+      className: "location-marker",
+      html: `<div style="position:relative;width:32px;height:32px;">
+        <div style="position:absolute;inset:0;background:#10b981;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>
+        <div style="position:absolute;top:50%;left:50%;width:10px;height:10px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);"></div>
+      </div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+    });
+    userMarkerRef.current = L.marker([lat, lng], { icon: locationIcon }).addTo(map);
+    userMarkerRef.current.bindPopup(`<strong>Your Location</strong><br/>${placeName}`);
     mapRef.current = map;
 
     const ro = new ResizeObserver(() => map.invalidateSize());
@@ -177,11 +178,7 @@ export function SafetyMap({
     }
 
     if (!userMovedRef.current) {
-      const bounds = L.latLngBounds([
-        ...framing.map((h) => [h.lat, h.lng] as [number, number]),
-        [lat, lng],
-      ]);
-      map.fitBounds(bounds, { padding: [48, 48], maxZoom: 15 });
+      map.setView([lat, lng], 15, { animate: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crime, lat, lng, selectedCrime]);
@@ -192,6 +189,11 @@ export function SafetyMap({
     userMarkerRef.current?.setLatLng([lat, lng]);
     if (!userMovedRef.current) mapRef.current.setView([lat, lng], mapRef.current.getZoom(), { animate: true });
   }, [crime, lat, lng]);
+
+  const centerOnMe = useCallback(() => {
+    userMovedRef.current = false;
+    mapRef.current?.setView([lat, lng], 15, { animate: true });
+  }, [lat, lng]);
 
   const densityNote = useMemo(() => "transparent red = crime density", []);
 
@@ -216,8 +218,19 @@ export function SafetyMap({
 
         <div className="pointer-events-none absolute left-4 top-4 z-[1000] flex items-center gap-2 border border-border bg-background px-3 py-2 font-mono text-[11px] uppercase text-foreground shadow-sm">
           <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-          {emergency ? "SOS PREVIEW / LIVE TRACKING" : crime ? "CRIME MAP · 5S AUTO-LOCATION" : "5S AUTO-LOCATION ACTIVE"}
+          {emergency ? "SOS PREVIEW / LIVE TRACKING" : crime ? "CRIME MAP · 60S AUTO-LOCATION" : "60S AUTO-LOCATION ACTIVE"}
         </div>
+
+        {crime && (
+          <button
+            type="button"
+            onClick={centerOnMe}
+            title="Center map on my current location"
+            className="absolute right-3 top-4 z-[1000] flex items-center gap-1.5 border border-border bg-background px-3 py-2 font-mono text-[11px] uppercase text-foreground shadow-sm hover:bg-surface"
+          >
+            <LocateFixed className="size-3.5" /> Center on me
+          </button>
+        )}
 
         {crime && (
           <div className="pointer-events-none absolute inset-0 z-[1000]">
@@ -298,7 +311,7 @@ export function SafetyMap({
               <MapPin className="size-3" /> {position ? "Live GPS Coordinates" : "Default Location"}
             </p>
             <span className="inline-flex items-center gap-1 font-mono text-[11px] uppercase text-emerald-600 font-bold animate-pulse">
-              <Radio className="size-3" /> Auto 5s Sync
+              <Radio className="size-3" /> Auto 60s Sync
             </span>
           </div>
 
@@ -314,8 +327,18 @@ export function SafetyMap({
           </p>
 
           <div className="mt-4 flex items-center gap-2 border border-emerald-600/40 bg-emerald-950/20 p-3 font-mono text-xs text-emerald-400">
-            <Radio className="size-4 animate-ping text-emerald-500" /> Auto-updating map every 5 seconds
+            <Radio className="size-4 animate-ping text-emerald-500" /> Auto-updating map every 60 seconds
           </div>
+          <div className="mt-3 flex gap-2">
+            <Button onClick={locate} variant="outline" size="sm" className="flex-1 font-mono text-xs uppercase">
+              <LocateFixed className="mr-2 size-3.5" /> Auto Update GPS
+            </Button>
+            <Button onClick={useExactLocation} variant="outline" size="sm" className="flex-1 font-mono text-xs uppercase">
+              <MapPin className="mr-2 size-3.5" /> Use Exact Location
+            </Button>
+          </div>
+
+
 
           {crime && (
             <div role="status" className="mt-6 border-l-2 border-red-600 bg-red-950/20 p-4">

@@ -26,7 +26,7 @@ import { TacticalMap, type MapMarker } from "@/components/site/tactical-map";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { rideApi, type GeoPoint } from "@/lib/api";
-import { HYDERABAD } from "@/lib/geo";
+import { DEFAULT_LOCATION } from "@/lib/geo";
 
 type ExtractedRide = {
   id?: string;

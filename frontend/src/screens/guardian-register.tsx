@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { guardians as initialGuardians } from "@/lib/mock-data";
 import { guardianApi, type GuardianRecord } from "@/lib/api";
-import { HYDERABAD } from "@/lib/geo";
+import { DEFAULT_LOCATION } from "@/lib/geo";
 
 export function GuardianRegister() {
   type Guardian = (typeof initialGuardians)[number] & {
@@ -39,8 +39,8 @@ export function GuardianRegister() {
   const [guardians, setGuardians] = useState<Guardian[]>(
     initialGuardians.map((g, i) => ({
       ...g,
-      lat: HYDERABAD.lat + (i === 0 ? 0.008 : i === 1 ? -0.012 : 0.015),
-      lng: HYDERABAD.lng + (i === 0 ? 0.006 : i === 1 ? 0.014 : -0.009),
+      lat: DEFAULT_LOCATION.lat + (i === 0 ? 0.008 : i === 1 ? -0.012 : 0.015),
+      lng: DEFAULT_LOCATION.lng + (i === 0 ? 0.006 : i === 1 ? 0.014 : -0.009),
       distanceKm: i === 0 ? 1.2 : i === 1 ? 2.8 : 4.5,
       etaMins: i === 0 ? 3 : i === 1 ? 7 : 12,
       signal: i === 0 ? 98 : i === 1 ? 92 : 84,
@@ -86,8 +86,8 @@ export function GuardianRegister() {
             priority: g.priority || idx + 1,
             status: g.status === "ACTIVE" || g.status === "LINKED" ? "LINKED" : "PENDING",
             lastSeen: "NOW",
-            lat: HYDERABAD.lat + (idx * 0.007 - 0.005),
-            lng: HYDERABAD.lng + (idx * 0.009 - 0.004),
+            lat: DEFAULT_LOCATION.lat + (idx * 0.007 - 0.005),
+            lng: DEFAULT_LOCATION.lng + (idx * 0.009 - 0.004),
             distanceKm: (idx + 1) * 1.5,
             etaMins: (idx + 1) * 4,
             signal: 95 - idx * 5,
@@ -118,8 +118,8 @@ export function GuardianRegister() {
       priority: guardians.length + 1,
       status: "PENDING",
       lastSeen: "JUST NOW",
-      lat: HYDERABAD.lat + 0.01,
-      lng: HYDERABAD.lng + 0.01,
+      lat: DEFAULT_LOCATION.lat + 0.01,
+      lng: DEFAULT_LOCATION.lng + 0.01,
       distanceKm: 3.2,
       etaMins: 8,
       signal: 90,
@@ -183,11 +183,11 @@ export function GuardianRegister() {
 
   // Construct map markers for tactical radar
   const mapMarkers: MapMarker[] = [
-    { id: "user-loc", lat: HYDERABAD.lat, lng: HYDERABAD.lng, label: "Your Location", kind: "you" },
+    { id: "user-loc", lat: DEFAULT_LOCATION.lat, lng: DEFAULT_LOCATION.lng, label: "Your Location", kind: "you" },
     ...guardians.map((g) => ({
       id: g.id,
-      lat: g.lat ?? HYDERABAD.lat + 0.005,
-      lng: g.lng ?? HYDERABAD.lng + 0.005,
+      lat: g.lat ?? DEFAULT_LOCATION.lat + 0.005,
+      lng: g.lng ?? DEFAULT_LOCATION.lng + 0.005,
       label: `${g.name} (${g.relation})`,
       kind: "guardian" as const,
     })),

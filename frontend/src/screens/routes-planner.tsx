@@ -25,7 +25,7 @@ import { Page, Section, Tag } from "@/components/site/shell";
 import { TacticalMap, type MapMarker } from "@/components/site/tactical-map";
 import { Button } from "@/components/ui/button";
 import { mapApi, type PlaceRecord, type GeoPoint } from "@/lib/api";
-import { HYDERABAD } from "@/lib/geo";
+import { DEFAULT_LOCATION } from "@/lib/geo";
 
 const modes = [
   { id: "flight", icon: Plane, label: "Flight + Cab", mins: 260, cost: 5850, badge: "FASTEST INTER-CITY" },

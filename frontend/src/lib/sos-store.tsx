@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ApiError, sosApi, type SosRecord } from "@/lib/api";
 import type { GeoPoint } from "@/lib/api";
-import { HYDERABAD, readBrowserLocation } from "@/lib/geo";
+import { DEFAULT_LOCATION, readBrowserLocation } from "@/lib/geo";
 
 type SosContextValue = {
   active: boolean;
@@ -71,7 +71,7 @@ export function SosProvider({ children }: { children: ReactNode }) {
       try {
         location = await readBrowserLocation();
       } catch {
-        location = { ...HYDERABAD };
+        location = { ...DEFAULT_LOCATION };
       }
     }
     try {
