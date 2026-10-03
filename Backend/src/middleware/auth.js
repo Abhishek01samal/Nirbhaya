@@ -1,16 +1,16 @@
 /**
- * TEMPORARY AUTH INTERFACE — OWNED BY PERSON 3.
+ * SHARED AUTH CONTRACT — OWNED BY PERSON 3.
  *
- * Person 3 owns /auth, the User model and the final authentication middleware.
- * This file only provides the minimal shared contract Person 1 depends on:
+ * Every route consumes the same middleware:
  *
- *   req.user = { id: string, role: "USER" | "ADMIN" }
+ *   req.user = { id: string, userId: string, role: "USER" | "GUARDIAN" | "ADMIN" }
  *
- * When Person 3 ships the real middleware, replace the body of `requireAuth`
- * (or re-export theirs) — every Person 1 endpoint keeps using `requireAuth`.
+ * Tokens are `Authorization: Bearer <JWT>` with a minimal payload
+ * (`sub`/`userId` + `role`) signed with JWT_SECRET.
+ *
+ * This is AUTHENTICATION only — no role/authorization checks live here yet.
  */
-import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
+import { verifyAuthToken } from '../utils/jwt.js';
 import { ApiError } from '../utils/ApiError.js';
 
 export const requireAuth = (req, res, next) => {
@@ -22,17 +22,11 @@ export const requireAuth = (req, res, next) => {
   }
 
   try {
-    const payload = jwt.verify(token, env.jwtSecret);
-    const id = payload.sub || payload.id;
-
-    if (!id) {
-      return next(new ApiError(401, 'INVALID_TOKEN', 'Token missing subject'));
-    }
-
-    req.user = { id: String(id), userId: String(id), role: payload.role || 'USER' };
+    const { userId, role } = verifyAuthToken(token);
+    req.user = { id: userId, userId, role };
     return next();
   } catch (err) {
-    return next(new ApiError(401, 'INVALID_TOKEN', 'Invalid or expired token'));
+    return next(err.statusCode ? err : new ApiError(401, 'INVALID_TOKEN', 'Invalid or expired token'));
   }
 };
 
