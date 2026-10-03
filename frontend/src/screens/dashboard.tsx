@@ -112,7 +112,7 @@ export function Dashboard() {
   const overall = Math.round(AGENTS.reduce((s, _, i) => s + progress(i), 0) / AGENTS.length);
 
   const onMicResult = (r: { original: string; english: string }) => micRef.current?.(r);
-  const mapBlock = <SafetyMap emergency={sos} featured={sos} />;
+  const mapBlock = <SafetyMap emergency={sos} featured={sos} crime />;
 
   return <Page>
     {sos && (

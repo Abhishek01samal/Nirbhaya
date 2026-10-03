@@ -6,12 +6,14 @@ import {
   HeadContent,
   Scripts,
   useRouter,
+  useNavigate,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportError } from "../lib/error-reporting";
-import { SosProvider } from "../lib/sos-store";
+import { SosProvider, useSos } from "../lib/sos-store";
+import { IntroVideo } from "../components/site/intro-video";
 
 function NotFoundComponent() {
   return (
@@ -130,12 +132,23 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+function SosNavigate() {
+  const { active } = useSos();
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (active) void navigate({ to: "/guardians" });
+  }, [active, navigate]);
+  return null;
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
       <SosProvider>
+        <IntroVideo />
+        <SosNavigate />
         {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
         <Outlet />
       </SosProvider>
