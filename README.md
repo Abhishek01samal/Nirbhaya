@@ -1,199 +1,228 @@
 # Nirbhaya
-AI-Powered Personal Safety Web Application
-A full-stack MERN-based real-time personal safety platform that
-combines journey monitoring, GPS tracking, ride screenshot/OCR analysis,
-route deviation detection, prolonged-stop detection, safe-place
-discovery, crime-area visualization, AI-assisted voice danger detection,
-and hierarchical SOS escalation.
-Project status: Active development
-Application type: Web application
-Architecture: MERN + REST + Socket.IO + external service
-integrations
 
-Table of Contents
-- Overview
-- Core Features
-- How It Works
-- Technology Stack
-- System Architecture
-- Repository Structure
-- Team Responsibilities
-- Safety Session
-- Live Location Tracking
-- Ride Screenshot and OCR
-- Route Deviation Detection
-- Prolonged Stop Detection
-- Safety Event Contract
-- SOS Flow
-- Safe Places
-- Crime Map
-- Transport Search
-- Voice Safety Pipeline
-- AI Assistant
-- Real-Time Communication
-- Database Design
-- REST API
-- Environment Variables
-- Local Development
-- Development Workflow
-- Testing
-- Security and Privacy
-- Git Workflow
-- Implementation Checklist
-- Architecture Principles
-Overview
-This application is designed to provide a real-time safety layer
-around a user's journey.
-A user can start a safety session, share their live location with
-consent, optionally upload a ride-booking screenshot, and allow the
-system to monitor the journey.
-The platform can combine multiple signals:
-- GPS movement
-- Expected route
+> AI-Powered Personal Safety Web Application
+
+Nirbhaya is a full-stack MERN-based real-time personal safety platform designed to help users stay safer during journeys and potentially dangerous situations.
+
+The platform combines **live GPS tracking, ride verification, OCR, route monitoring, AI-assisted voice danger detection, safe-place discovery, crime-area visualization, and hierarchical SOS escalation** into a single safety system.
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [How It Works](#how-it-works)
+- [Safety Architecture](#safety-architecture)
+- [Technology Stack](#technology-stack)
+- [System Architecture](#system-architecture)
+- [Project Structure](#project-structure)
+- [Team Responsibilities](#team-responsibilities)
+- [Safety Session](#safety-session)
+- [Live Location Tracking](#live-location-tracking)
+- [Ride Screenshot and OCR](#ride-screenshot-and-ocr)
+- [Ride Lifecycle](#ride-lifecycle)
+- [Route Monitoring](#route-monitoring)
+- [Prolonged Stop Detection](#prolonged-stop-detection)
+- [Safety Event Contract](#safety-event-contract)
+- [Safe Places](#safe-places)
+- [Safe Route](#safe-route)
+- [Crime Map](#crime-map)
+- [Transport Search](#transport-search)
+- [AI Voice Safety](#ai-voice-safety)
+- [AI Assistant](#ai-assistant)
+- [SOS Architecture](#sos-architecture)
+- [Real-Time Communication](#real-time-communication)
+- [Database Design](#database-design)
+- [REST API](#rest-api)
+- [Socket Events](#socket-events)
+- [Environment Variables](#environment-variables)
+- [Installation](#installation)
+- [Development Roadmap](#development-roadmap)
+- [Testing](#testing)
+- [Security and Privacy](#security-and-privacy)
+- [Git Workflow](#git-workflow)
+- [Implementation Checklist](#implementation-checklist)
+- [Architecture Principles](#architecture-principles)
+- [End-to-End Flow](#end-to-end-flow)
+- [Project Goal](#project-goal)
+
+---
+
+# Overview
+
+Nirbhaya works as a real-time safety layer around a user's journey.
+
+A user can start a safety session, share their live location with consent, upload a ride-booking screenshot, and allow the system to monitor their journey.
+
+The platform continuously evaluates multiple safety signals:
+
+- Live GPS location
+- Expected travel route
 - Ride information
 - Route deviation
-- Unexpected prolonged stops
+- Prolonged unexpected stops
 - AI-analyzed voice signals
 - Manual SOS
-These signals are converted into standardized safety events.
-The emergency system then verifies the situation with the user before
-escalating when appropriate.
-Important design principle
-The application separates danger detection from emergency
-escalation.
-Journey / AI Modules
-        |
-        | Safety Events
-        v
-   SOS Module
-        |
-        v
- Verification
-        |
-        +---- Cancel
-        |
-        +---- Activate SOS
-                  |
-                  v
-             Guardian
-                  |
-                  v
-          Nearby Responders
-                  |
-                  v
-        Emergency Services
-This prevents different modules from implementing competing SOS logic.
-Core Features
-  Feature                             Description
-  Safety Session                      Represents an active protected
-                                      journey
-  Live Location                       Tracks the user's GPS location with
-                                      consent
-  Ride Screenshot                     Accepts an Uber/Ola/other ride
-                                      screenshot
-  OCR Extraction                      Extracts driver, vehicle, plate,
-                                      pickup and destination
-  Ride Confirmation                   Lets the user review extracted ride
-                                      information
-  Route Monitoring                    Compares live GPS against the
-                                      expected route
-  Route Deviation                     Detects persistent movement away
-                                      from the planned route
-  Prolonged Stop                      Detects unexpected stationary
-                                      periods away from the destination
-  Safe Places                         Finds nearby approved safety
-                                      locations
-  Safe Route                          Generates a route to a selected
-                                      safe place
-  Crime Map                           Displays crime-risk information
-                                      geographically
-  Transport Search                    Helps guardians find
-                                      bus/train/flight options
-  Voice Safety                        Processes consented audio in
-                                      batches for AI analysis
-  Manual SOS                          Allows the user to initiate an
-                                      emergency
-  SOS Verification                    Confirms whether an automatically
-                                      detected event is accidental
-  Guardian Escalation                 Notifies guardians during an active
-                                      SOS
-  Nearby Responders                   Expands the response radius when
-                                      required
-  Emergency Escalation                Escalates when configured
-                                      conditions are met
-  Calling                             Enables authorized real-time voice
-                                      communication
-  AI Assistant                        Provides conversational safety
-                                      assistance
-  Dashboard                           Presents journey and safety status
-  Feedback                            Collects user feedback
-How It Works
-A typical journey:
-1. User starts a Safety Session
-              |
-              v
-2. User grants location permission
-              |
-              v
-3. User optionally uploads ride screenshot
-              |
-              v
-4. Screenshot -> Cloudinary -> OCR
-              |
-              v
-5. Driver / vehicle / route information extracted
-              |
-              v
-6. User reviews and confirms ride information
-              |
-              v
-7. Ride starts
-              |
-              v
-8. Google Maps generates expected route
-              |
-              v
-9. Browser sends GPS updates
-              |
-              v
-10. Route + stop monitoring begins
-              |
-       +------+------+
-       |             |
-       v             v
-  OFF_ROUTE      LONG_STOP
-       |             |
-       +------+------+
-              |
-              v
+
+Potential safety events are passed to the SOS system for verification and escalation.
+
+### Core Principle
+
+```text
+DETECT
+   ↓
+VERIFY
+   ↓
+RESPOND
+```
+
+The journey and AI modules detect potential risks.
+
+The SOS module handles verification and emergency escalation.
+
+---
+
+# Features
+
+| Feature | Description |
+|---|---|
+| Safety Sessions | Start and manage a protected journey |
+| Live Location | Track the user's location with consent |
+| Ride Screenshot | Upload an Uber/Ola/other ride screenshot |
+| OCR Extraction | Extract driver, vehicle, plate, pickup and destination |
+| Ride Confirmation | Review and confirm extracted ride information |
+| Route Monitoring | Compare live GPS with the expected route |
+| Route Deviation | Detect persistent movement away from the planned route |
+| Prolonged Stop | Detect unexpected stationary periods |
+| Safe Places | Find nearby safe locations |
+| Safe Routes | Generate routes to safe places |
+| Crime Map | Visualize crime-risk information |
+| Transport Search | Search bus, train and flight options |
+| AI Voice Safety | Analyze consented voice data |
+| Manual SOS | Trigger an emergency manually |
+| SOS Verification | Verify automatic safety events |
+| Guardian Escalation | Notify trusted guardians |
+| Nearby Responders | Escalate to nearby responders |
+| Emergency Escalation | Continue escalation when required |
+| Real-Time Calling | Support emergency communication |
+| AI Assistant | Provide conversational safety assistance |
+| Dashboard | Display safety and journey information |
+| Feedback | Collect user feedback |
+
+---
+
+# How It Works
+
+A typical journey follows this flow:
+
+```text
+User
+ │
+ ▼
+Start Safety Session
+ │
+ ▼
+Grant Location Permission
+ │
+ ▼
+Upload Ride Screenshot
+ │
+ ▼
+OCR Extracts Ride Information
+ │
+ ▼
+User Confirms Ride
+ │
+ ▼
+Ride Starts
+ │
+ ▼
+Expected Route Generated
+ │
+ ▼
+Live GPS Monitoring
+ │
+ ├───────────────┐
+ ▼               ▼
+OFF_ROUTE      LONG_STOP
+ │               │
+ └───────┬───────┘
+         ▼
+   SAFETY EVENT
+         │
+         ▼
+ SOS VERIFICATION
+         │
+    ┌────┴────┐
+    │         │
+   SAFE    NO RESPONSE /
+    │      NEEDS HELP
+    ▼         │
+ CANCEL       ▼
+           SOS ACTIVE
+               │
+       ┌───────┼────────┐
+       ▼       ▼        ▼
+   Guardian Responders Emergency
+```
+
+---
+
+# Safety Architecture
+
+The system separates **risk detection** from **emergency response**.
+
+```text
+Journey Module
+      │
+      ├── OFF_ROUTE
+      │
+      └── LONG_STOP
+             │
+             ▼
        Safety Event
-              |
-              v
-        SOS Verification
-              |
-       +------+------+
-       |             |
-     Safe         No response /
-       |          needs help
-       v             |
-     Cancel          v
-                  SOS Active
-                     |
-             +-------+-------+
-             |       |       |
-             v       v       v
-         Guardian  Nearby  Emergency
-                   Users   Services
-Technology Stack
-Frontend
+             │
+             ▼
+        SOS Module
+             │
+             ▼
+        Verification
+             │
+       ┌─────┴─────┐
+       ▼           ▼
+     Cancel       Activate
+                   SOS
+                    │
+          ┌─────────┼─────────┐
+          ▼         ▼         ▼
+      Guardian  Responders Emergency
+```
+
+The voice AI module can generate:
+
+```text
+VOICE_DANGER
+```
+
+Person 1's SOS module is responsible for the final emergency state machine.
+
+---
+
+# Technology Stack
+
+## Frontend
+
 - React
 - React Router
-- Axios or Fetch
+- Axios / Fetch
 - Socket.IO Client
 - Browser Geolocation API
 - Browser Media APIs
 - Google Maps JavaScript API
-Backend
+
+## Backend
+
 - Node.js
 - Express.js
 - MongoDB
@@ -203,52 +232,68 @@ Backend
 - Multer
 - Axios
 - Cloudinary
-External Integrations
-- Google Maps
-- Cloudinary
-- OCR provider
-- Transcription provider
-- Translation provider
-- AI/LLM provider
-- Tavily
-- LiveKit and/or ZEGOCLOUD
-System Architecture
-                         +-------------------+
-                         |   React Frontend  |
-                         +---------+---------+
-                                   |
-                    +--------------+--------------+
-                    |                             |
-                 REST API                    Socket.IO
-                    |                             |
-                    +--------------+--------------+
-                                   |
-                         +---------v---------+
-                         | Node.js + Express |
-                         +---------+---------+
-                                   |
-             +---------------------+---------------------+
-             |                     |                     |
-      +------v------+       +------v------+       +------v------+
-      |   Modules   |       |   Services  |       |   Sockets   |
-      +------+------+       +------+------+       +------+------+
-             |                     |                     |
-             +----------+----------+----------+----------+
-                        |                     |
-                 +------v------+       +------v------+
-                 |  MongoDB    |       | Integrations|
-                 +-------------+       +-------------+
-                                             |
-                         +-------------------+-------------------+
-                         |         |         |        |          |
-                         v         v         v        v          v
-                      Maps       OCR    Cloudinary    AI     Calling
-Repository Structure
-project-root/
+
+## External Services
+
+| Service | Purpose |
+|---|---|
+| Google Maps | Maps, routes, directions and places |
+| Cloudinary | Image and media storage |
+| OCR Provider | Ride screenshot analysis |
+| Transcription API | Audio-to-text conversion |
+| Translation API | Language translation |
+| AI / LLM | Voice risk analysis and AI assistant |
+| Tavily | Web search |
+| LiveKit / ZEGOCLOUD | Real-time calling |
+
+---
+
+# System Architecture
+
+```text
+                         ┌─────────────────────┐
+                         │   React Frontend    │
+                         └──────────┬──────────┘
+                                    │
+                       ┌────────────┴────────────┐
+                       │                         │
+                    REST API                 Socket.IO
+                       │                         │
+                       └────────────┬────────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │   Node.js + Express │
+                         └──────────┬──────────┘
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              │                     │                     │
+              ▼                     ▼                     ▼
+          Modules                Services              Sockets
+              │                     │                     │
+              └─────────────────────┼─────────────────────┘
+                                    │
+                         ┌──────────▼──────────┐
+                         │       MongoDB       │
+                         └─────────────────────┘
+                                    │
+                         External Integrations
+                                    │
+              ┌─────────┬───────────┼──────────┬─────────┐
+              ▼         ▼           ▼          ▼         ▼
+           Maps       OCR       Cloudinary     AI      Calling
+```
+
+---
+
+# Project Structure
+
+```text
+Nirbhaya/
 │
-├── client/                         # React frontend
+├── client/
+│   └── ...                         # React frontend
 │
-├── server/                         # Node.js backend
+├── server/
 │   │
 │   ├── package.json
 │   ├── .env
@@ -266,6 +311,7 @@ project-root/
 │       │   └── cloudinary.js
 │       │
 │       ├── modules/
+│       │   │
 │       │   ├── auth/
 │       │   ├── users/
 │       │   ├── guardians/
@@ -323,29 +369,45 @@ project-root/
 │           └── logger.js
 │
 └── README.md
-Team Responsibilities
-Person 1 --- Emergency and Communication
-Owns:
+```
+
+---
+
+# Team Responsibilities
+
+## Person 1 — Emergency & Communication
+
+### Responsible Modules
+
+```text
 modules/sos/
 modules/guardians/
 integrations/calling/
 socket/sos.socket.js
 socket/calling.socket.js
 jobs/sosEscalation.job.js
-Responsibilities:
+```
+
+### Responsibilities
+
 - Manual SOS
 - SOS verification
-- Accidental-trigger handling
+- Accidental SOS handling
 - SOS timeout
 - SOS state machine
 - Guardian notification
 - Nearby responder escalation
 - Emergency escalation
 - SOS history
-- Real-time SOS events
-- Calling authorization/token flow
-Person 2 --- Journey and Location Safety
-Owns:
+- Calling
+
+---
+
+## Person 2 — Journey & Location Safety
+
+### Responsible Modules
+
+```text
 modules/location/
 modules/safetySession/
 modules/ride/
@@ -363,21 +425,32 @@ socket/ride.socket.js
 middleware/upload.js
 utils/geo.js
 utils/distance.js
-Responsibilities:
+```
+
+### Responsibilities
+
 - GPS tracking
 - Safety sessions
 - Ride screenshot processing
 - OCR
-- Driver and vehicle extraction
-- Expected route generation
+- Driver information extraction
+- Vehicle information extraction
+- Number plate extraction
+- Route generation
 - Route deviation detection
 - Prolonged-stop detection
 - Safe places
 - Crime data
 - Transport search
 - Journey-related safety events
-Person 3 --- AI and Platform
-Owns:
+
+---
+
+## Person 3 — AI & Platform
+
+### Responsible Modules
+
+```text
 modules/auth/
 modules/users/
 modules/voice/
@@ -391,44 +464,56 @@ integrations/transcriber/
 integrations/translator/
 
 jobs/voiceBatch.job.js
-Responsibilities:
+```
+
+### Responsibilities
+
 - Authentication
-- User profile
+- User profiles
 - Voice monitoring
 - Transcription
 - Translation
-- AI danger analysis
+- AI danger detection
 - AI assistant
 - Web search
 - Dashboard
 - Feedback
-Safety Session
-A safety session represents the user's protected journey.
+
+---
+
+# Safety Session
+
+A safety session represents a user's active protected journey.
+
 It connects:
+
+```text
 User
- |
- +-- Location
- |
- +-- Ride
- |
- +-- Voice Monitoring
- |
- +-- Safety Events
- |
- +-- SOS
+ │
+ ├── Location
+ │
+ ├── Ride
+ │
+ ├── Voice Monitoring
+ │
+ ├── Safety Events
+ │
+ └── SOS
+```
+
 Example:
+
+```json
 {
   "userId": "USER_ID",
   "status": "ACTIVE",
   "startLocation": {
     "lat": 22.346,
-    "lng": 87.232,
-    "address": "IIT Kharagpur Main Gate"
+    "lng": 87.232
   },
   "destination": {
-    "lat": 22.34,
-    "lng": 87.32,
-    "address": "Kharagpur Bus Stand"
+    "lat": 22.340,
+    "lng": 87.320
   },
   "settings": {
     "locationTracking": true,
@@ -436,121 +521,188 @@ Example:
     "rideMonitoring": true
   }
 }
-Live Location Tracking
-The frontend uses the browser Geolocation API.
+```
+
+---
+
+# Live Location Tracking
+
+The browser uses the Geolocation API.
+
+```text
 Browser
-   |
-   | latitude / longitude
-   v
+   │
+   │ GPS coordinates
+   ▼
 Socket.IO
-   |
-   v
-Backend
-   |
-   +--> Location collection
-   |
-   +--> SafetySession.lastLocation
-   |
-   +--> Route monitoring
-   |
-   +--> Stop detection
-Location records contain:
+   │
+   ▼
+Location Service
+   │
+   ├──► MongoDB
+   │
+   ├──► Safety Session
+   │
+   ├──► Route Monitor
+   │
+   └──► Stop Detector
+```
+
+Each location record contains:
+
+```text
 userId
 safetySessionId
-latitude
-longitude
+coordinates
 accuracy
 speed
 timestamp
-MongoDB uses a 2dsphere index for geospatial queries.
-Ride Screenshot and OCR
+```
+
+MongoDB uses a `2dsphere` index for geospatial queries.
+
+---
+
+# Ride Screenshot and OCR
+
 The user can upload an Uber, Ola, or other ride-booking screenshot.
-Screenshot
-    |
-    v
-Multer
-    |
-    v
-Cloudinary
-    |
-    v
-OCR
-    |
-    v
+
+```text
+Ride Screenshot
+      │
+      ▼
+    Multer
+      │
+      ▼
+  Cloudinary
+      │
+      ▼
+   OCR API
+      │
+      ▼
 Structured Ride Data
-    |
-    v
+      │
+      ▼
 User Confirmation
-    |
-    v
-Ride Record
-The system can attempt to extract:
+      │
+      ▼
+  Ride Record
+```
+
+The OCR pipeline attempts to extract:
+
+```text
 Platform
-Driver name
-Driver phone
-Vehicle model
-Number plate
+Driver Name
+Driver Phone
+Vehicle Model
+Number Plate
 Pickup
 Destination
-OCR output must be considered potentially incorrect. The user should be
-able to review and confirm extracted information before ride monitoring
-begins.
-Route Deviation Detection
-When the ride starts:
+```
+
+OCR results must be reviewable because OCR can produce incorrect information.
+
+---
+
+# Ride Lifecycle
+
+```text
+CREATED
+   │
+   ▼
+CONFIRMED
+   │
+   ▼
+ACTIVE
+   │
+   ▼
+COMPLETED
+```
+
+A ride can also be cancelled:
+
+```text
+CREATED ──────► CANCELLED
+CONFIRMED ────► CANCELLED
+ACTIVE ───────► CANCELLED
+```
+
+---
+
+# Route Monitoring
+
+When a ride starts:
+
+```text
 Pickup + Destination
-        |
-        v
-Google Maps
-        |
-        v
-Expected Route
-        |
-        v
-GPS Monitoring
-        |
-        v
-Distance from Expected Route
-        |
-        v
-Persistent Deviation?
-        |
-       Yes
-        |
-        v
-OFF_ROUTE
-A single inaccurate GPS point should not trigger an emergency.
-The route monitor should account for:
+        │
+        ▼
+   Google Maps
+        │
+        ▼
+ Expected Route
+        │
+        ▼
+    Live GPS
+        │
+        ▼
+Distance Calculation
+        │
+        ▼
+Persistent Deviation
+        │
+        ▼
+    OFF_ROUTE
+```
+
+A single inaccurate GPS point should never be treated as proof of danger.
+
+The monitoring system considers:
+
 - GPS accuracy
 - Temporary signal loss
 - Urban GPS noise
 - Short deviations
-- Route alternatives
-- Map inaccuracies
+- Alternative routes
 - Destination proximity
-Prolonged Stop Detection
-The system should distinguish between a normal stop and a potentially
-concerning stop.
-Vehicle stops
-      |
-      v
-Start timer
-      |
-      v
-Near destination?
-   /          \
- Yes          No
-  |            |
-Ignore       Continue
-               |
-               v
-        Threshold reached
-               |
-               v
-          LONG_STOP
-Normal traffic stops should not automatically cause an SOS.
-Safety Event Contract
-Journey modules send standardized events to the SOS module.
-OFF_ROUTE
+
+---
+
+# Prolonged Stop Detection
+
+```text
+Vehicle Stops
+      │
+      ▼
+ Start Timer
+      │
+      ▼
+Near Destination?
+   │          │
+  YES         NO
+   │          │
+   ▼          ▼
+ Ignore    Continue Timer
+               │
+               ▼
+        Threshold Reached
+               │
+               ▼
+           LONG_STOP
+```
+
+Short traffic stops should not automatically trigger an emergency.
+
+---
+
+# Safety Event Contract
+
+Journey modules generate standardized safety events.
+
+## OFF_ROUTE
+
+```json
 {
   "type": "OFF_ROUTE",
   "userId": "USER_ID",
@@ -565,7 +717,11 @@ OFF_ROUTE
   },
   "timestamp": "2026-10-06T12:00:00.000Z"
 }
-LONG_STOP
+```
+
+## LONG_STOP
+
+```json
 {
   "type": "LONG_STOP",
   "userId": "USER_ID",
@@ -580,71 +736,98 @@ LONG_STOP
   },
   "timestamp": "2026-10-06T12:05:00.000Z"
 }
-The receiving SOS module owns the final emergency decision.
-SOS Flow
-Automatic safety event
-OFF_ROUTE / LONG_STOP / VOICE_DANGER
-                 |
-                 v
-          Safety Verification
-                 |
-                 v
-             "Are you safe?"
-                 |
-          +------+------+
-          |             |
-         YES         NO RESPONSE
-          |             |
-          v             v
-        Cancel       Timeout
-                        |
-                        v
-                    SOS ACTIVE
-Manual SOS
-User presses SOS
-       |
-       v
-Accidental trigger check
-       |
-   +---+---+
-   |       |
-  YES     NO
-   |       |
-Cancel    SOS
-The verification system should prevent accidental emergency activation
-while ensuring that silence or lack of response can still lead to
-escalation when configured.
-Safe Places
-The application can find nearby approved or relevant safety locations.
-Possible categories:
+```
+
+These events are sent to the SOS system.
+
+The journey module does **not** implement its own SOS state machine.
+
+---
+
+# Safe Places
+
+The application can search for nearby safe locations.
+
+Possible categories include:
+
 - Police stations
 - Hospitals
 - Fire stations
-- Verified public safety centers
+- Verified safety centers
 - Approved partner locations
-Example request:
+
+Example:
+
+```http
 GET /api/v1/safe-places/nearby?lat=22.57&lng=88.36&radius=5000
-Crime Map
+```
+
+---
+
+# Safe Route
+
+A user can select a safe place and request a route.
+
+```text
+Current Location
+       │
+       ▼
+  Selected Safe Place
+       │
+       ▼
+Google Maps Directions
+       │
+       ▼
+    Safe Route
+       │
+       ▼
+  Frontend Map
+```
+
+---
+
+# Crime Map
+
 Crime information is stored as geospatial records.
-Low risk       -> lower visual intensity
-Medium risk    -> moderate visual intensity
-High risk      -> red
-Crime records can include:
+
+Example data:
+
+```text
 Source
 Year
 Category
 Location
 Address
 Description
-NCRB data can be imported and transformed into application-friendly
-records where the dataset's terms and applicable requirements permit.
-Transport Search
-Guardians may need to reach the user's location.
-The transport module can search:
-Bus
-Train
-Flight
-Example normalized result:
+```
+
+The frontend can visualize risk levels geographically.
+
+```text
+Lower Risk   → Lower Intensity
+Medium Risk  → Medium Intensity
+High Risk    → Red
+```
+
+Crime datasets should retain their source and year.
+
+---
+
+# Transport Search
+
+Guardians can search for transportation options to reach the user's location.
+
+Supported categories:
+
+```text
+BUS
+TRAIN
+FLIGHT
+```
+
+Example normalized response:
+
+```json
 {
   "type": "TRAIN",
   "operator": "Example Rail",
@@ -653,31 +836,42 @@ Example normalized result:
   "arrival": "21:45",
   "duration": "3h 15m"
 }
-Voice Safety Pipeline
-Voice monitoring uses a batch-based architecture.
+```
+
+---
+
+# AI Voice Safety
+
+The voice monitoring system works using time-based batches.
+
+```text
 Browser Microphone
-        |
-        v
+        │
+        ▼
 Audio Capture
-        |
-        v
-1-Minute Batch
-        |
-        v
+        │
+        ▼
+1-Minute Audio Batch
+        │
+        ▼
 Transcription
-        |
-        v
+        │
+        ▼
 Optional Translation
-        |
-        v
+        │
+        ▼
 AI Risk Analysis
-        |
-        v
-Structured Risk Result
-        |
-        v
-VOICE_DANGER Event
+        │
+        ▼
+Structured Result
+        │
+        ▼
+VOICE_DANGER
+```
+
 Example AI result:
+
+```json
 {
   "riskDetected": true,
   "riskLevel": "HIGH",
@@ -688,46 +882,118 @@ Example AI result:
     "request_for_help"
   ]
 }
-The AI does not directly execute the SOS state machine.
-AI Assistant
-The assistant can help with:
-- Safety advice
-- Travel questions
-- Application guidance
-- Current information lookup
-- Understanding safety alerts
-- General safety-related assistance
-Tavily can provide web search capabilities when current external
-information is required.
-Real-Time Communication
-Socket.IO handles real-time events.
-Location events
+```
+
+The AI does not directly activate SOS.
+
+It generates a safety signal that is handled by the SOS module.
+
+---
+
+# AI Assistant
+
+The AI assistant can help users with:
+
+- Safety guidance
+- Travel information
+- Application assistance
+- Current information
+- Safety alert explanations
+- General safety questions
+
+Tavily can be used when the assistant needs current web information.
+
+---
+
+# SOS Architecture
+
+## Automatic Safety Event
+
+```text
+OFF_ROUTE
+LONG_STOP
+VOICE_DANGER
+     │
+     ▼
+Safety Verification
+     │
+     ▼
+"Are you safe?"
+     │
+ ┌───┴────────┐
+ │            │
+YES       NO RESPONSE
+ │            │
+ ▼            ▼
+Cancel      Timeout
+              │
+              ▼
+          SOS ACTIVE
+              │
+      ┌───────┼────────┐
+      ▼       ▼        ▼
+   Guardian Responders Emergency
+```
+
+## Manual SOS
+
+```text
+User Presses SOS
+       │
+       ▼
+Accidental Trigger Check
+       │
+   ┌───┴───┐
+   │       │
+  YES      NO
+   │       │
+Cancel    SOS
+```
+
+This helps prevent accidental triggers while still allowing automatic escalation when the user cannot respond.
+
+---
+
+# Real-Time Communication
+
+Socket.IO is used for real-time application events.
+
+## Location Events
+
+```text
 location:update
 location:current
 location:error
-Ride events
+```
+
+## Ride Events
+
+```text
 ride:started
 ride:locationUpdated
 ride:offRoute
 ride:longStop
 ride:completed
-SOS events
+```
+
+## SOS Events
+
+```text
 sos:triggered
 sos:verification
 sos:activated
 sos:cancelled
 sos:escalated
 sos:resolved
-Calling
-LiveKit or ZEGOCLOUD can handle actual voice transport.
-The backend handles:
-- Authentication
-- Authorization
-- Room/session creation
-- Token generation
-- Call metadata
-Database Design
-Users
+```
+
+---
+
+# Database Design
+
+## Users
+
+```js
 {
   _id,
   name,
@@ -739,7 +1005,11 @@ Users
   createdAt,
   updatedAt
 }
-Guardians
+```
+
+## Guardians
+
+```js
 {
   _id,
   userId,
@@ -750,7 +1020,11 @@ Guardians
   createdAt,
   updatedAt
 }
-Safety Sessions
+```
+
+## Safety Sessions
+
+```js
 {
   _id,
   userId,
@@ -765,7 +1039,11 @@ Safety Sessions
   createdAt,
   updatedAt
 }
-Locations
+```
+
+## Locations
+
+```js
 {
   _id,
   userId,
@@ -778,49 +1056,34 @@ Locations
   speed,
   timestamp
 }
-Rides
+```
+
+## Rides
+
+```js
 {
   _id,
   userId,
   safetySessionId,
   platform,
-  screenshot: {
-    url,
-    publicId
-  },
-  driver: {
-    name,
-    phone
-  },
-  vehicle: {
-    model,
-    numberPlate
-  },
-  pickup: {
-    address,
-    lat,
-    lng
-  },
-  destination: {
-    address,
-    lat,
-    lng
-  },
-  expectedRoute: {
-    coordinates
-  },
+  screenshot,
+  driver,
+  vehicle,
+  pickup,
+  destination,
+  expectedRoute,
   status,
-  monitoring: {
-    lastMovementAt,
-    offRoute,
-    prolongedStop
-  },
+  monitoring,
   startedAt,
   completedAt,
   createdAt,
   updatedAt
 }
-Application Data
+```
+
+## Application Data
+
+```js
 {
   _id,
   type,
@@ -830,44 +1093,91 @@ Application Data
     type: "Point",
     coordinates: [lng, lat]
   },
-  metadata: {
-    source,
-    sourceYear,
-    address,
-    description
-  },
+  metadata,
   createdAt,
   updatedAt
 }
-REST API
+```
+
+---
+
+# REST API
+
 Base URL:
+
+```text
 /api/v1
-  Method   Endpoint                      Purpose
-  POST   /safety-sessions            Create safety session
-  GET    /safety-sessions/active     Get active session
-  POST   /safety-sessions/:id/end    End session
-  POST   /location                   Store location
-  GET    /location/current/:userId   Current location
-  GET    /location/history           Location history
-  POST   /rides/upload               Upload ride screenshot
-  GET    /rides/:id                  Get ride
-  POST   /rides/:id/confirm          Confirm OCR data
-  POST   /rides/:id/start            Start ride
-  POST   /rides/:id/stop             Stop ride
-  GET    /safe-places/nearby         Find nearby safe places
-  GET    /safe-places/route          Route to safe place
-  GET    /crime/incidents            Get crime incidents
-  GET    /crime/heatmap              Get crime heatmap
-  GET    /transport/search           Search transport
-  GET    /health                     Server health
-Environment Variables
+```
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/health` | Server health |
+| POST | `/safety-sessions` | Create safety session |
+| GET | `/safety-sessions/active` | Get active session |
+| POST | `/safety-sessions/:id/end` | End session |
+| POST | `/location` | Store location |
+| GET | `/location/current/:userId` | Get current location |
+| GET | `/location/history` | Get location history |
+| POST | `/rides/upload` | Upload ride screenshot |
+| GET | `/rides/:id` | Get ride |
+| POST | `/rides/:id/confirm` | Confirm ride data |
+| POST | `/rides/:id/start` | Start ride monitoring |
+| POST | `/rides/:id/stop` | Stop ride monitoring |
+| GET | `/safe-places/nearby` | Find nearby safe places |
+| GET | `/safe-places/route` | Generate safe route |
+| GET | `/crime/incidents` | Get crime incidents |
+| GET | `/crime/heatmap` | Get crime heatmap |
+| GET | `/transport/search` | Search transportation |
+
+---
+
+# Socket Events
+
+## Location
+
+```text
+location:update
+location:current
+location:error
+```
+
+## Ride
+
+```text
+ride:started
+ride:locationUpdated
+ride:offRoute
+ride:longStop
+ride:completed
+```
+
+## SOS
+
+```text
+sos:triggered
+sos:verification
+sos:activated
+sos:cancelled
+sos:escalated
+sos:resolved
+```
+
+---
+
+# Environment Variables
+
 Create:
+
+```text
 server/.env
+```
+
 Example:
+
+```env
 PORT=8000
 
 MONGO_URI=
-
 JWT_SECRET=
 
 CLIENT_URL=http://localhost:5173
@@ -898,47 +1208,97 @@ LIVEKIT_URL=
 
 ZEGO_APP_ID=
 ZEGO_SERVER_SECRET=
-Never commit .env.
-Local Development
-Prerequisites
-Install:
+```
+
+Never commit `.env`.
+
+Use `.env.example` for variable names without secrets.
+
+---
+
+# Installation
+
+## Prerequisites
+
 - Node.js
 - npm
 - MongoDB or MongoDB Atlas
 - Git
-Create the project:
-git clone <repository-url>
-cd <project-folder>
-Install backend dependencies:
+
+## Backend Setup
+
+```bash
 cd server
 npm install
-Create:
-.env
-Start development server:
-npm run dev
-The backend runs on:
-http://localhost:8000
-Health check:
-GET http://localhost:8000/api/v1/health
-Expected response:
+```
+
+Install required packages:
+
+```bash
+npm install express mongoose cors dotenv jsonwebtoken multer socket.io axios cloudinary
+```
+
+Install development dependency:
+
+```bash
+npm install -D nodemon
+```
+
+## ES Modules
+
+Add this to `package.json`:
+
+```json
 {
-  "success": true,
-  "message": "Safety backend is running"
+  "type": "module"
 }
-Recommended Package Scripts
+```
+
+## Scripts
+
+```json
 {
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js"
   }
 }
-For ES modules:
+```
+
+## Run Development Server
+
+```bash
+npm run dev
+```
+
+Server:
+
+```text
+http://localhost:8000
+```
+
+Health check:
+
+```text
+http://localhost:8000/api/v1/health
+```
+
+Expected response:
+
+```json
 {
-  "type": "module"
+  "success": true,
+  "message": "Safety backend is running"
 }
-Development Workflow
-Build incrementally.
-Phase 1 --- Backend Foundation
+```
+
+---
+
+# Development Roadmap
+
+## Phase 1 — Backend Foundation
+
+```text
 package.json
 .env
 config/env.js
@@ -946,129 +1306,172 @@ config/db.js
 app.js
 server.js
 middleware/error.js
-Goal:
-Server starts
-MongoDB connects
-Health endpoint works
-Phase 2 --- Safety Session
-Implement:
-SafetySession model
-SafetySession service
-SafetySession controller
-SafetySession routes
-Phase 3 --- Location
-Implement:
-Location model
-Location service
-Location controller
-Location routes
-location.socket.js
-Phase 4 --- Ride
-Implement:
-Ride model
-Ride service
-Ride controller
-Ride routes
-Cloudinary integration
-OCR integration
-upload middleware
-Phase 5 --- Maps
-Implement:
-googleMaps integration
-Add:
-- Route generation
-- Distance calculations
-- Nearby places
-- Safe routes
-Phase 6 --- Monitoring
-Implement:
-routeMonitor.service.js
-stopDetector.service.js
-Phase 7 --- Safe Places and Crime
-Implement:
-safePlace/
-crime/
-Phase 8 --- Transport
-Implement:
-transport/
-Phase 9 --- Team Integration
-Connect:
+```
+
+## Phase 2 — Safety Session
+
+```text
+SafetySession Model
+SafetySession Service
+SafetySession Controller
+SafetySession Routes
+```
+
+## Phase 3 — Location
+
+```text
+Location Model
+Location Service
+Location Controller
+Location Routes
+Location Socket
+```
+
+## Phase 4 — Ride
+
+```text
+Ride Model
+Ride Service
+Ride Controller
+Ride Routes
+Cloudinary
+OCR
+Upload Middleware
+```
+
+## Phase 5 — Google Maps
+
+```text
+Expected Route
+Distance Calculation
+Nearby Places
+Safe Routes
+```
+
+## Phase 6 — Monitoring
+
+```text
+Route Deviation
+Prolonged Stop
+Safety Events
+```
+
+## Phase 7 — Safety Data
+
+```text
+Safe Places
+Crime Map
+Transport Search
+```
+
+## Phase 8 — Team Integration
+
+```text
 Person 2
-   |
-   +--> OFF_ROUTE
-   |
-   +--> LONG_STOP
-             |
-             v
-        Person 1 SOS
-And:
+   │
+   ├── OFF_ROUTE
+   │
+   └── LONG_STOP
+          │
+          ▼
+      Person 1 SOS
+
+
 Person 3
-   |
-   v
-VOICE_DANGER
-   |
-   v
-Person 1 SOS
-Testing
-Test each module independently before integrating.
-Safety Sessions
-- Create session
-- Duplicate active session
-- End session
-- Unauthorized access
-Location
-- Valid coordinates
-- Invalid coordinates
-- Current location
-- History
-- Socket connection
-- Socket disconnection
-- GPS accuracy
-Ride
-- Valid screenshot
-- Invalid file
-- Large file
-- OCR failure
-- Missing driver data
-- User correction
-- Ride start
-- Ride stop
-Route Monitoring
-- Normal route
-- Small deviation
-- Persistent deviation
-- Large deviation
-- GPS noise
-- Poor accuracy
-- Destination arrival
-Stop Detection
-- Short stop
-- Threshold stop
-- Stop at destination
-- Stop away from destination
-- Traffic-like stop
-External APIs
-- Successful response
-- Empty response
-- Timeout
-- Invalid response
-- Provider failure
-Security and Privacy
-This application processes sensitive information.
-Location
+   │
+   └── VOICE_DANGER
+          │
+          ▼
+      Person 1 SOS
+```
+
+---
+
+# Testing
+
+## Safety Sessions
+
+- [ ] Create session
+- [ ] Prevent duplicate active sessions
+- [ ] Get active session
+- [ ] End session
+- [ ] Verify ownership
+
+## Location
+
+- [ ] Validate coordinates
+- [ ] Save location
+- [ ] Get current location
+- [ ] Get location history
+- [ ] Test Socket.IO
+- [ ] Handle GPS accuracy
+
+## Ride
+
+- [ ] Upload screenshot
+- [ ] Validate file type
+- [ ] Validate file size
+- [ ] OCR extraction
+- [ ] Handle OCR failure
+- [ ] Confirm ride data
+- [ ] Start ride
+- [ ] Stop ride
+
+## Route Monitoring
+
+- [ ] Normal route
+- [ ] Small deviation
+- [ ] Persistent deviation
+- [ ] GPS noise
+- [ ] Poor accuracy
+- [ ] Destination arrival
+
+## Stop Detection
+
+- [ ] Short stop
+- [ ] Long stop
+- [ ] Stop at destination
+- [ ] Stop away from destination
+- [ ] Traffic-like stop
+
+## External Integrations
+
+- [ ] Google Maps success
+- [ ] Google Maps timeout
+- [ ] OCR failure
+- [ ] Cloudinary failure
+- [ ] Transport provider failure
+- [ ] AI provider failure
+
+---
+
+# Security and Privacy
+
+Nirbhaya processes sensitive information, so privacy and security are core requirements.
+
+## Location
+
 Location tracking requires user consent.
-Voice
+
+## Voice
+
 Voice monitoring requires explicit user consent.
-Ride Data
-Ride screenshots can contain:
-- Driver information
+
+## Ride Data
+
+Ride screenshots may contain:
+
+- Driver details
 - Phone numbers
 - Addresses
 - Payment information
-- Trip details
+- Trip information
+
 Only necessary information should be retained.
-Logging
-Never log:
+
+## Never Log
+
+```text
 Passwords
 JWT tokens
 API secrets
@@ -1076,42 +1479,52 @@ Full payment card numbers
 Private audio
 Unnecessary phone numbers
 Sensitive location data
-Good logging:
-Safety session started
-Ride created
-Route monitoring started
-OFF_ROUTE detected
-LONG_STOP detected
-Authorization
+```
+
+## Authorization
+
 Users should only access their own:
+
 - Safety sessions
 - Location history
 - Ride information
-- Uploaded screenshots
-Guardian access should be limited to information explicitly shared
-through the application's safety flow.
-Security Checklist
-- [ ] .env excluded from Git
-- [ ] Secure JWT secret configured
-- [ ] CORS restricted
-- [ ] Upload size limits enabled
-- [ ] File MIME types validated
+- Uploaded media
+
+Guardian access should only expose information allowed by the active safety workflow.
+
+---
+
+# Security Checklist
+
+- [ ] `.env` added to `.gitignore`
+- [ ] Secure JWT secret
+- [ ] CORS configured
+- [ ] Upload limits enabled
+- [ ] File types validated
 - [ ] Authentication enforced
 - [ ] Authorization enforced
-- [ ] Location access restricted
-- [ ] Ride data access restricted
+- [ ] WebSocket authentication
 - [ ] Sensitive logs removed
-- [ ] Rate limiting considered
+- [ ] API timeouts configured
 - [ ] HTTPS enabled in production
-- [ ] WebSocket authentication enabled
-- [ ] External API timeouts configured
-- [ ] Data retention policy defined
+- [ ] Rate limiting configured
 - [ ] Database backups configured
-Git Workflow
+- [ ] Data retention policy defined
+
+---
+
+# Git Workflow
+
 Recommended branches:
+
+```text
 main
 develop
+```
+
 Feature branches:
+
+```text
 feature/safety-session
 feature/location-tracking
 feature/ride-upload
@@ -1122,201 +1535,224 @@ feature/stop-detection
 feature/safe-place
 feature/crime-map
 feature/transport
+```
+
 Example commits:
+
+```text
 feat: add safety session model
-feat: add browser location ingestion
+feat: add live location tracking
 feat: add ride screenshot upload
 feat: integrate OCR
 feat: add route deviation detection
 feat: add prolonged stop detection
-feat: add nearby safe places
+feat: add safe place search
 feat: add crime heatmap endpoint
 fix: ignore inaccurate GPS points
-Implementation Checklist
-Backend Foundation
-- [ ] Express configured
-- [ ] MongoDB connected
+```
+
+---
+
+# Implementation Checklist
+
+## Backend
+
+- [ ] Express server
+- [ ] MongoDB connection
 - [ ] Environment configuration
-- [ ] Error middleware
-- [ ] Authentication integrated
-- [ ] Socket.IO initialized
-Safety Session
-- [ ] Create session
-- [ ] Get active session
-- [ ] End session
-- [ ] Ownership validation
-Location
-- [ ] Browser GPS integration
-- [ ] Location persistence
-- [ ] Current location API
-- [ ] History API
-- [ ] Socket location updates
-- [ ] 2dsphere index
-Ride
-- [ ] Screenshot upload
-- [ ] Cloudinary upload
-- [ ] OCR extraction
-- [ ] Driver information
-- [ ] Vehicle information
-- [ ] Number plate
-- [ ] Pickup
-- [ ] Destination
-- [ ] User confirmation
-- [ ] Ride lifecycle
-Monitoring
+- [ ] Error handling
+- [ ] Authentication
+- [ ] Authorization
+- [ ] Socket.IO
+
+## Journey Safety
+
+- [ ] Safety sessions
+- [ ] Live location
+- [ ] Location history
+- [ ] Ride screenshot upload
+- [ ] OCR
+- [ ] Ride confirmation
 - [ ] Expected route
-- [ ] GPS accuracy filtering
-- [ ] Route deviation detection
-- [ ] Persistence threshold
+- [ ] Route monitoring
+- [ ] Route deviation
 - [ ] Prolonged stop detection
-- [ ] Destination detection
-- [ ] OFF_ROUTE event
-- [ ] LONG_STOP event
-Safe Places
-- [ ] Nearby search
-- [ ] Safe categories
-- [ ] Route generation
-Crime
-- [ ] Dataset ingestion
-- [ ] Geospatial storage
-- [ ] Incident API
-- [ ] Heatmap API
-Transport
-- [ ] Search endpoint
-- [ ] Provider integration
-- [ ] Normalized response
-Team Integration
-- [ ] SOS event contract
-- [ ] Voice event contract
-- [ ] Shared authentication
-- [ ] Shared user IDs
-- [ ] Socket event contract
-Architecture Principles
-1. Detection Is Not Escalation
-Journey module
-     |
-     v
-Safety event
-     |
-     v
-SOS module
-     |
-     v
-Emergency state machine
-2. Keep Controllers Thin
+
+## Safety Data
+
+- [ ] Safe places
+- [ ] Safe routes
+- [ ] Crime incidents
+- [ ] Crime heatmap
+- [ ] Transport search
+
+## AI
+
+- [ ] Audio capture
+- [ ] Transcription
+- [ ] Translation
+- [ ] Batch processing
+- [ ] Risk analysis
+- [ ] `VOICE_DANGER`
+- [ ] AI assistant
+
+## Emergency
+
+- [ ] Manual SOS
+- [ ] Safety verification
+- [ ] Timeout handling
+- [ ] Guardian escalation
+- [ ] Nearby responder escalation
+- [ ] Emergency escalation
+- [ ] Calling
+
+---
+
+# Architecture Principles
+
+## 1. Detection Is Not Escalation
+
+```text
+Detection
+    ↓
+Safety Event
+    ↓
+SOS Verification
+    ↓
+Emergency Escalation
+```
+
+## 2. Keep Controllers Thin
+
+```text
 Route
-  |
-  v
+  ↓
 Controller
-  |
-  v
+  ↓
 Service
-  |
-  v
-Integration / Database
-3. Isolate External Providers
-Avoid scattering provider-specific API calls throughout controllers.
+  ↓
+Database / Integration
+```
+
+## 3. Isolate External Services
+
+External APIs should not be scattered throughout controllers.
+
+```text
+Business Service
+      │
+      ├── Google Maps
+      ├── OCR
+      ├── Cloudinary
+      ├── AI
+      └── Transport Provider
+```
+
+## 4. Treat GPS as Probabilistic
+
+GPS can be inaccurate.
+
 Use:
-Service
-   |
-   +--> Google Maps integration
-   +--> OCR integration
-   +--> Cloudinary integration
-   +--> AI integration
-4. Design for Provider Replacement
-The business logic should not depend directly on one vendor.
-OCR interface
-   |
-   +--> Provider A
-   +--> Provider B
 
-Maps interface
-   |
-   +--> Google Maps
-   +--> Alternative provider
+- Accuracy
+- Persistence
+- Thresholds
+- Multiple observations
 
-Calling interface
-   |
-   +--> LiveKit
-   +--> ZEGOCLOUD
-5. Treat GPS as Probabilistic Data
-Never interpret a single inaccurate coordinate as proof of danger.
-6. Require Consent
-Location and voice monitoring must be explicit, understandable, and
-controllable by the user.
-7. Minimize Sensitive Data
-Store only what is needed to provide the safety service.
-Project Completion Criteria
-The application is considered functionally complete when:
-[ ] User can authenticate
-[ ] User can create a safety session
-[ ] User can share location
-[ ] User can upload a ride screenshot
-[ ] OCR extracts ride information
-[ ] User can confirm ride information
-[ ] Expected route is generated
-[ ] Live ride monitoring works
-[ ] Route deviation is detected
-[ ] Prolonged stops are detected
-[ ] Safe places can be found
-[ ] Safe routes can be generated
-[ ] Crime data can be displayed
-[ ] Transport can be searched
-[ ] Voice batches can be analyzed
-[ ] Safety events are generated
-[ ] SOS verification works
-[ ] Guardian escalation works
-[ ] Nearby responder escalation works
-[ ] Emergency escalation works
-[ ] Real-time calling works
-[ ] Dashboard displays current state
-[ ] Feedback can be submitted
-[ ] Authentication and authorization are enforced
-[ ] Sensitive information is protected
-Final Architecture
-                           USER
-                            |
-                            v
-                    +---------------+
-                    | Safety Session|
-                    +-------+-------+
-                            |
-       +--------------------+--------------------+
-       |                    |                    |
-       v                    v                    v
-   LOCATION               RIDE                VOICE
-       |                    |                    |
-       |              +-----+-----+              |
-       |              |           |              |
-       |              v           v              v
-       |             OCR       ROUTE          AI ANALYSIS
-       |                          |                |
-       +------------+-------------+----------------+
-                    |
-                    v
-             JOURNEY MONITORING
-                    |
-             +------+------+
-             |             |
-             v             v
-         OFF_ROUTE     LONG_STOP
-             |             |
-             +------+------+
-                    |
-                    v
-              SAFETY EVENT
-                    |
-                    v
-              SOS MODULE
-                    |
-          +---------+---------+
-          |         |         |
-          v         v         v
-      GUARDIAN  RESPONDERS  EMERGENCY
-The platform's central architectural principle is:
-Detect → Verify → Respond
+before generating a safety event.
 
-Journey monitoring and AI analysis detect potentially dangerous
-conditions. The SOS system verifies the situation and manages emergency
-escalation. This separation keeps the application modular, safer to
-develop, and easier to test and maintain.
+## 5. Consent First
+
+Location and voice monitoring must be explicitly enabled by the user.
+
+## 6. Minimize Sensitive Data
+
+Store only the information required to provide the safety service.
+
+## 7. Keep Integrations Replaceable
+
+External providers should be isolated so they can be replaced without rewriting core application logic.
+
+---
+
+# End-to-End Flow
+
+```text
+                         USER
+                           │
+                           ▼
+                  START SAFETY SESSION
+                           │
+                           ▼
+                    SHARE LOCATION
+                           │
+                           ▼
+                  UPLOAD RIDE SCREENSHOT
+                           │
+                           ▼
+                          OCR
+                           │
+                           ▼
+                   CONFIRM RIDE DATA
+                           │
+                           ▼
+                       START RIDE
+                           │
+                           ▼
+                    EXPECTED ROUTE
+                           │
+                           ▼
+                    LIVE GPS TRACKING
+                           │
+              ┌────────────┼────────────┐
+              │            │            │
+              ▼            ▼            ▼
+          OFF_ROUTE     LONG_STOP   VOICE_DANGER
+              │            │            │
+              └────────────┼────────────┘
+                           ▼
+                     SAFETY EVENT
+                           │
+                           ▼
+                    SOS VERIFICATION
+                           │
+                           ▼
+                     SOS ACTIVATED
+                           │
+             ┌─────────────┼─────────────┐
+             ▼             ▼             ▼
+          GUARDIAN      RESPONDERS   EMERGENCY
+```
+
+---
+
+# Project Goal
+
+Nirbhaya aims to create a **real-time, intelligent and privacy-conscious personal safety platform** that can:
+
+1. Understand the user's journey.
+2. Monitor movement with consent.
+3. Verify ride information.
+4. Detect unusual journey behavior.
+5. Analyze potential voice-based danger.
+6. Give the user an opportunity to respond.
+7. Escalate emergencies when necessary.
+8. Keep trusted contacts informed.
+9. Help responders reach the user.
+10. Provide useful safety information throughout the journey.
+
+---
+
+# Final Safety Model
+
+```text
+          DETECT
+             ↓
+          VERIFY
+             ↓
+          RESPOND
+```
+
+Nirbhaya is designed around this simple principle:
+
+> **Detect potential danger early, verify the situation before escalating whenever possible, and respond through a structured emergency workflow when help is required.**
